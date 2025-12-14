@@ -5,11 +5,14 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.contrib.auth.hashers import make_password, check_password
+from .constants import ROLE_CHOICES
+
 class PhoneOTP(models.Model):
-    phone = models.CharField(max_length=15, unique=True)
+    phone = models.CharField(max_length=15)
+    # Store a hashed OTP to avoid keeping raw codes at rest.
     otp = models.CharField(max_length=128)
     verified = models.BooleanField(default=False)
-    role = models.CharField(max_length=20, default="user")  # "user" or "provider"
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="user")
     expires_at = models.DateTimeField(null=True, blank=True)
     attempts = models.PositiveIntegerField(default=0)
     last_sent_at = models.DateTimeField(null=True, blank=True)
@@ -17,6 +20,7 @@ class PhoneOTP(models.Model):
     class Meta:
         verbose_name = "Phone OTP"
         verbose_name_plural = "Phone OTPs"
+        unique_together = [['phone', 'role']]  # Same phone can have different OTPs for different roles
 
     def __str__(self):
         return f"{self.phone} - {self.role} - Verified: {self.verified}"
