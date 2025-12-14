@@ -98,14 +98,28 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+# Prefer PostgreSQL via env vars; fall back to SQLite for local/dev when not set.
+DB_ENGINE = config("DB_ENGINE", default=None)
+DB_NAME = config("DB_NAME", default=None)
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+if DB_ENGINE == "postgresql" or DB_NAME:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": DB_NAME or "transport_db",
+            "USER": config("DB_USER", default="postgres"),
+            "PASSWORD": config("DB_PASSWORD", default=""),
+            "HOST": config("DB_HOST", default="localhost"),
+            "PORT": config("DB_PORT", default="5432"),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
