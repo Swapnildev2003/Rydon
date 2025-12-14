@@ -3,8 +3,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 # Create your views here.
 import random
+from datetime import timedelta
 from twilio.rest import Client
 from django.conf import settings
+from django.utils import timezone
+from django.contrib.auth.hashers import make_password, check_password
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .models import PhoneOTP
@@ -45,10 +48,18 @@ def generate_otp():
 
 @csrf_exempt
 def get_all_otp_entries(request):
+    """
+    Get all OTP entries (for debugging/admin purposes only).
+    SECURITY: Never expose OTP values, even if hashed.
+    """
     if request.method == 'GET':
         try:
-            # Get all PhoneOTP records from database
-            otp_entries = PhoneOTP.objects.all().values()
+            # Get all PhoneOTP records but exclude sensitive OTP data
+            otp_entries = PhoneOTP.objects.all().values(
+                'id', 'phone', 'verified', 'role', 
+                'expires_at', 'attempts', 'last_sent_at'
+            )
+            # Note: 'otp' field is intentionally excluded for security
             
             # Convert QuerySet to list for JSON serialization
             data = list(otp_entries)
@@ -60,71 +71,128 @@ def get_all_otp_entries(request):
     
     return JsonResponse({'error': 'Only GET method allowed'}, status=405)
 
-# Send OTP via Twilio SMS
+# Send OTP via Twilio SMS with a DEBUG fallback (simulated send).
 def send_otp_sms(phone, otp):
-    client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
-    message = client.messages.create(
-        body=f"Your OTP is {otp}",
-        from_=settings.TWILIO_PHONE_NUMBER,
-        to=f'+91{phone}'  # change country code if needed
-    )
-    
-    return message.sid
+    sid = getattr(settings, "TWILIO_ACCOUNT_SID", None)
+    token = getattr(settings, "TWILIO_AUTH_TOKEN", None)
+    from_number = getattr(settings, "TWILIO_PHONE_NUMBER", None)
+
+    if not all([sid, token, from_number]):
+        if settings.DEBUG:
+            # Simulate send in development so local testing works without Twilio creds.
+            return "dev-simulated-sid"
+        raise ValueError("Twilio credentials are not configured")
+
+    client = Client(sid, token)
+    try:
+        message = client.messages.create(
+            body=f"Your OTP is {otp}",
+            from_=from_number,
+            to=f"+91{phone}",  # change country code if needed
+        )
+        return message.sid
+    except Exception as exc:
+        if settings.DEBUG:
+            # In debug we allow the flow to continue while surfacing the error text.
+            return f"dev-simulated-sid-error:{exc}"
+        raise
 
 
 
 # Send OTP endpoint
 @api_view(['POST'])
-
 def send_otp(request):
     serializer = PhoneSerializer(data=request.data)
-    if serializer.is_valid():
-        phone = serializer.validated_data['phone']
-        role = serializer.validated_data['role']  # get role from request
-        otp = generate_otp()
-        try:
-            send_otp_sms(phone, otp)
-            PhoneOTP.objects.update_or_create(
-                phone=phone,
-                defaults={'otp': otp, 'verified': False, 'role': role}
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=400)
+
+    phone = serializer.validated_data['phone']
+    role = serializer.validated_data['role']
+    otp = generate_otp()
+    now = timezone.now()
+    cooldown_seconds = 60
+    expiry_minutes = 5
+
+    existing = PhoneOTP.objects.filter(phone=phone, role=role).first()
+    if existing and existing.last_sent_at and (now - existing.last_sent_at).total_seconds() < cooldown_seconds:
+        wait = cooldown_seconds - int((now - existing.last_sent_at).total_seconds())
+        return Response({"error": f"Please wait {wait}s before requesting another OTP"}, status=429)
+
+    try:
+        message_sid = send_otp_sms(phone, otp)
+        PhoneOTP.objects.update_or_create(
+            phone=phone,
+            role=role,
+            defaults={
+                'otp': make_password(otp),
+                'verified': False,
+                'expires_at': now + timedelta(minutes=expiry_minutes),
+                'attempts': 0,
+                'last_sent_at': now,
+            }
+        )
+        
+        # Security: Never send OTP in API response, even in DEBUG mode
+        # For local development, OTP is logged to server console only
+        if settings.DEBUG:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"[DEBUG MODE] OTP for {phone} ({role}): {otp} | "
+                f"Expires at: {now + timedelta(minutes=expiry_minutes)}"
             )
-            return Response({"message": "OTP sent successfully"})
-        except Exception as e:
-            return Response({"error": str(e)}, status=500)
-    return Response(serializer.errors, status=400)
+            # Also print to console for immediate visibility in development
+            print(f"\n{'='*60}")
+            print(f"[DEBUG] OTP sent to {phone} ({role})")
+            print(f"OTP: {otp}")
+            print(f"Expires at: {now + timedelta(minutes=expiry_minutes)}")
+            print(f"{'='*60}\n")
+        
+        return Response({"message": "OTP sent successfully"})
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
 
 
 # Verify OTP endpoint
 @api_view(['POST'])
-
 def verify_otp(request):
     serializer = OTPVerifySerializer(data=request.data)
-    if serializer.is_valid():
-        phone = serializer.validated_data['phone']
-        otp = serializer.validated_data['otp']
-        role = serializer.validated_data['role']
-        try:
-            user_otp = PhoneOTP.objects.get(phone=phone, role=role)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=400)
 
-            if user_otp.otp == otp:
-                user_otp.verified = True
-                user_otp.save()
+    phone = serializer.validated_data['phone']
+    otp = serializer.validated_data['otp']
+    role = serializer.validated_data['role']
 
-                user, created = User.objects.get_or_create(username=phone)
-                # Optional: set role-based fields, or use custom user model
-                
-                tokens = get_tokens_for_user(user)
+    try:
+        user_otp = PhoneOTP.objects.get(phone=phone, role=role)
+    except PhoneOTP.DoesNotExist:
+        return Response({"error": "Phone number not found for this role"}, status=404)
 
-                return Response({
-                    "message": "OTP verified",
-                    "tokens": tokens,
-                    "role": role
-                })
-            else:
-                return Response({"error": "Invalid OTP"}, status=400)
-        except PhoneOTP.DoesNotExist:
-            return Response({"error": "Phone number not found for this role"}, status=404)
-    return Response(serializer.errors, status=400)
+    now = timezone.now()
+    if user_otp.expires_at and now > user_otp.expires_at:
+        return Response({"error": "OTP expired"}, status=400)
+
+    if user_otp.attempts >= 5:
+        return Response({"error": "Too many attempts, please request a new OTP"}, status=429)
+
+    if check_password(otp, user_otp.otp):
+        user_otp.verified = True
+        user_otp.attempts = 0
+        user_otp.save(update_fields=["verified", "attempts"])
+
+        user, created = User.objects.get_or_create(username=phone)
+        tokens = get_tokens_for_user(user)
+
+        return Response({
+            "message": "OTP verified",
+            "tokens": tokens,
+            "role": role
+        })
+
+    user_otp.attempts += 1
+    user_otp.save(update_fields=["attempts"])
+    return Response({"error": "Invalid OTP"}, status=400)
 
 
 
