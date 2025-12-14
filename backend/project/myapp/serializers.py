@@ -2,14 +2,16 @@ from rest_framework import serializers
 from .models import *
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils.dateparse import parse_date
+from .constants import get_role_choices
+
 class PhoneSerializer(serializers.Serializer):
-    phone = serializers.CharField(max_length=15)
-    role = serializers.CharField(max_length=20)  # user/provider
+    phone = serializers.RegexField(regex=r"^\d{10}$", max_length=15)
+    role = serializers.ChoiceField(choices=get_role_choices())
 
 class OTPVerifySerializer(serializers.Serializer):
-    phone = serializers.CharField(max_length=15)
+    phone = serializers.RegexField(regex=r"^\d{10}$", max_length=15)
     otp = serializers.CharField(max_length=6)
-    role = serializers.CharField(max_length=20)
+    role = serializers.ChoiceField(choices=get_role_choices())
 
     
 class PersonalDetailsSerializer(serializers.ModelSerializer):
