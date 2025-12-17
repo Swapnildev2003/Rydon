@@ -17,6 +17,7 @@ import {
   View
 } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
+import API_CONFIG, { getApiUrl, getWsUrl } from '../../../constants/ApiConfig';
 
 const DriverHome = ({ navigation }) => {
   // State variables
@@ -51,7 +52,7 @@ const DriverHome = ({ navigation }) => {
       setIsLoadingBookings(true);
       const driverId = await AsyncStorage.getItem('user_id');
       const response = await axios.get(
-        `http://10.40.11.244:8000/api/bookings/driver-id/?driver_id=${parseInt(driverId)}`
+        getApiUrl(API_CONFIG.ENDPOINTS.DRIVER_BOOKINGS(driverId))
       );
       
       setBookings(response.data);
@@ -170,16 +171,16 @@ const DriverHome = ({ navigation }) => {
 
       // Fetch driver details
       const driverResponse = await axios.get(
-        `http://10.40.11.244:8000/api/driver-details/${driverId}/`,
+        getApiUrl(API_CONFIG.ENDPOINTS.DRIVER_DETAILS(driverId)),
         config
       );
       setDriverData(driverResponse.data);
   
       // Fetch vehicle data
       const vehicleEndpoints = [
-        `http://10.40.11.244:8000/api/bus/driver/${driverId}/`,
-        `http://10.40.11.244:8000/api/car/driver/${driverId}/`,
-        `http://10.40.11.244:8000/api/bike/driver/${driverId}/`
+        getApiUrl(API_CONFIG.ENDPOINTS.VEHICLE_BY_DRIVER.BUS(driverId)),
+        getApiUrl(API_CONFIG.ENDPOINTS.VEHICLE_BY_DRIVER.CAR(driverId)),
+        getApiUrl(API_CONFIG.ENDPOINTS.VEHICLE_BY_DRIVER.BIKE(driverId))
       ];
 
       let vehicleResponse = null;
@@ -284,7 +285,7 @@ const DriverHome = ({ navigation }) => {
         const driverId = await AsyncStorage.getItem('user_id');
         if (!driverId || !vehicleData?.vehicle_type) return;
 
-        const wsUrl = `ws://10.40.11.244:8000/ws/bike/`;
+        const wsUrl = getWsUrl(API_CONFIG.ENDPOINTS.WEBSOCKET.BIKE);
         ws = new WebSocket(wsUrl);
         setConnectionStatus('connecting');
 

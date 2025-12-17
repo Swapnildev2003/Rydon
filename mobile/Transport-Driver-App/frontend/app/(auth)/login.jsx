@@ -4,6 +4,7 @@ import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { Link, router } from 'expo-router';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import API_CONFIG, { getApiUrl } from '../../constants/ApiConfig';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -12,7 +13,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     try {
-      const response = await axios.post(`http://10.40.11.244:8000/api/login/${role}/`, {
+      const response = await axios.post(getApiUrl(API_CONFIG.ENDPOINTS.LOGIN(role)), {
         email,
         password,
       });

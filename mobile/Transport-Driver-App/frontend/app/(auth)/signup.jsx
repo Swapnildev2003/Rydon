@@ -26,7 +26,7 @@ export default function SignupScreen() {
     }
 
     try {
-      const res = await axios.post(`http://10.40.11.244:8000/api/signup/${role}/`, payload);
+      const res = await axios.post(getApiUrl(API_CONFIG.ENDPOINTS.SIGNUP(role)), payload);
       Alert.alert('Signup Successful');
       router.replace(`/(auth)/login`);
     } catch (error) {
