@@ -5,7 +5,7 @@ import {
   DirectionsRenderer,
   Marker,
 } from "@react-google-maps/api";
-import { db, ref, onValue, update, remove } from "../firebase";
+// import { db, ref, onValue, update, remove } from "../firebase";
 import AddVehicleModal from "../components/AddVehicleModal";
 import { DetailCard } from "../components/DetailedCard";
 import {
