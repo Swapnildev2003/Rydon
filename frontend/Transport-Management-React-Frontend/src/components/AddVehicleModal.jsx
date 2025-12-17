@@ -138,7 +138,16 @@ export default function AddVehicleModal({ onClose, onSubmit, vehicleToUpdate }) 
 
   // Initialize map and services
   useEffect(() => {
-    if (window.google && isBus) {
+    // Check if Google Maps API is loaded
+    if (!window.google) {
+      console.error('Google Maps API is not loaded');
+      alert('Google Maps is not available. Please refresh the page and try again.');
+      return;
+    }
+    
+    console.log('Google Maps API is available');
+    
+    if (isBus) {
       const service = new window.google.maps.DirectionsService();
       const renderer = new window.google.maps.DirectionsRenderer({
         suppressMarkers: true,
@@ -146,26 +155,53 @@ export default function AddVehicleModal({ onClose, onSubmit, vehicleToUpdate }) 
       });
       setDirectionsService(service);
       setDirectionsRenderer(renderer);
+      console.log('Google Maps services initialized for bus routes');
     }
   }, [isBus]);
 
   // Geocode addresses to get coordinates
   const geocodeAddress = (address) => {
     return new Promise((resolve) => {
-      if (!window.google || !address) {
+      if (!window.google) {
+        console.error("Google Maps API not loaded");
+        alert("Google Maps is not loaded. Please refresh the page.");
+        resolve(null);
+        return;
+      }
+      
+      if (!address || address.trim() === '') {
+        console.warn("Empty address provided for geocoding");
         resolve(null);
         return;
       }
 
+      console.log("Geocoding address:", address);
       const geocoder = new window.google.maps.Geocoder();
-      geocoder.geocode({ address }, (results, status) => {
+      geocoder.geocode({ address: address.trim() }, (results, status) => {
+        console.log("Geocoding result:", { address, status, results });
+        
         if (status === "OK" && results[0]) {
-          resolve({
+          const location = {
             lat: results[0].geometry.location.lat(),
             lng: results[0].geometry.location.lng()
-          });
+          };
+          console.log("✅ Geocoding successful:", location);
+          resolve(location);
         } else {
-          console.error("Geocode failed for address:", address, "Reason:", status);
+          const errorMessage = `Geocoding failed for "${address}". Status: ${status}`;
+          console.error(errorMessage);
+          
+          // Show user-friendly error messages
+          if (status === "ZERO_RESULTS") {
+            alert(`Location not found: "${address}". Please try a more specific address.`);
+          } else if (status === "OVER_QUERY_LIMIT") {
+            alert("Too many requests. Please try again in a moment.");
+          } else if (status === "REQUEST_DENIED") {
+            alert("Google Maps access denied. Please check your API key permissions.");
+          } else {
+            alert(`Unable to find location: "${address}". Please try a different address.`);
+          }
+          
           resolve(null);
         }
       });
@@ -830,12 +866,33 @@ export default function AddVehicleModal({ onClose, onSubmit, vehicleToUpdate }) 
                 {isBus ? "Origin" : "Location"} <span className="text-red-500">*</span>
               </label>
               <Autocomplete
-                onLoad={(ref) => (fromRef.current = ref)}
+                onLoad={(ref) => {
+                  console.log('From autocomplete loaded:', ref);
+                  fromRef.current = ref;
+                }}
                 onPlaceChanged={() => {
-                  const place = fromRef.current.getPlace();
-                  const address = place?.formatted_address || place.name;
-                  setForm(prev => ({ ...prev, from: address }));
-                  setErrors(prev => ({ ...prev, from: null }));
+                  console.log('From place changed');
+                  try {
+                    const place = fromRef.current.getPlace();
+                    console.log('From place object:', place);
+                    
+                    if (!place || !place.geometry) {
+                      console.error('Invalid place object for From location');
+                      alert('Please select a valid location from the dropdown suggestions.');
+                      return;
+                    }
+                    
+                    const address = place.formatted_address || place.name;
+                    console.log('From address selected:', address);
+                    setForm(prev => ({ ...prev, from: address }));
+                    setErrors(prev => ({ ...prev, from: null }));
+                  } catch (error) {
+                    console.error('Error handling From place selection:', error);
+                    alert('Error selecting location. Please try again.');
+                  }
+                }}
+                restrictions={{
+                  country: ['IN'] // Restrict to India for better results
                 }}
               >
                 <input
@@ -855,12 +912,33 @@ export default function AddVehicleModal({ onClose, onSubmit, vehicleToUpdate }) 
                   Destination <span className="text-red-500">*</span>
                 </label>
                 <Autocomplete
-                  onLoad={(ref) => (toRef.current = ref)}
+                  onLoad={(ref) => {
+                    console.log('To autocomplete loaded:', ref);
+                    toRef.current = ref;
+                  }}
                   onPlaceChanged={() => {
-                    const place = toRef.current.getPlace();
-                    const address = place?.formatted_address || place.name;
-                    setForm(prev => ({ ...prev, to: address }));
-                    setErrors(prev => ({ ...prev, to: null }));
+                    console.log('To place changed');
+                    try {
+                      const place = toRef.current.getPlace();
+                      console.log('To place object:', place);
+                      
+                      if (!place || !place.geometry) {
+                        console.error('Invalid place object for To location');
+                        alert('Please select a valid location from the dropdown suggestions.');
+                        return;
+                      }
+                      
+                      const address = place.formatted_address || place.name;
+                      console.log('To address selected:', address);
+                      setForm(prev => ({ ...prev, to: address }));
+                      setErrors(prev => ({ ...prev, to: null }));
+                    } catch (error) {
+                      console.error('Error handling To place selection:', error);
+                      alert('Error selecting location. Please try again.');
+                    }
+                  }}
+                  restrictions={{
+                    country: ['IN'] // Restrict to India for better results
                   }}
                 >
                   <input
@@ -973,12 +1051,33 @@ export default function AddVehicleModal({ onClose, onSubmit, vehicleToUpdate }) 
 
               <div className="flex gap-2 mb-3">
                 <Autocomplete
-                  onLoad={(ref) => (checkpointRef.current = ref)}
+                  onLoad={(ref) => {
+                    console.log('Checkpoint autocomplete loaded:', ref);
+                    checkpointRef.current = ref;
+                  }}
                   onPlaceChanged={() => {
-                    const place = checkpointRef.current.getPlace();
-                    const address = place?.formatted_address || place.name;
-                    setNewCheckpoint(address);
-                    setCheckpointError("");
+                    console.log('Checkpoint place changed');
+                    try {
+                      const place = checkpointRef.current.getPlace();
+                      console.log('Checkpoint place object:', place);
+                      
+                      if (!place || !place.geometry) {
+                        console.error('Invalid place object for Checkpoint');
+                        alert('Please select a valid checkpoint location from the dropdown suggestions.');
+                        return;
+                      }
+                      
+                      const address = place.formatted_address || place.name;
+                      console.log('Checkpoint address selected:', address);
+                      setNewCheckpoint(address);
+                      setCheckpointError("");
+                    } catch (error) {
+                      console.error('Error handling Checkpoint place selection:', error);
+                      alert('Error selecting checkpoint location. Please try again.');
+                    }
+                  }}
+                  restrictions={{
+                    country: ['IN'] // Restrict to India for better results
                   }}
                 >
                   <input

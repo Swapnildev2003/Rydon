@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { submitPersonalDetails } from "../redux/slices/personalDetailsSlice";
+import { submitPersonalDetails, fetchPersonalDetails } from "../redux/slices/personalDetailsSlice";
 import FormWrapper from "./FormWrapper";
 
 export default function PersonalDetailsForm({ onSuccess }) {
   const dispatch = useDispatch();
-  const { loading, error, success } = useSelector((state) => state.personalDetails);
+  const { loading, error, success, data } = useSelector((state) => state.personalDetails);
 
   const [form, setForm] = useState({
     full_name: "",
@@ -13,6 +13,23 @@ export default function PersonalDetailsForm({ onSuccess }) {
     phone_number: "",
     address: "",
   });
+
+  // Fetch existing data on component mount
+  useEffect(() => {
+    dispatch(fetchPersonalDetails());
+  }, [dispatch]);
+
+  // Autofill form when data is fetched
+  useEffect(() => {
+    if (data) {
+      setForm({
+        full_name: data.full_name || "",
+        email: data.email || "",
+        phone_number: data.phone_number || "",
+        address: data.address || "",
+      });
+    }
+  }, [data]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });

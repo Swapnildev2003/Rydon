@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { submitBankDetails } from "../redux/slices/bankDetailsSlice";
+import { submitBankDetails, fetchBankDetails } from "../redux/slices/bankDetailsSlice";
 import FormWrapper from "./FormWrapper";
 
 export default function BankDetailsForm({ onSuccess }) {
   const dispatch = useDispatch();
-  const { loading, error, success } = useSelector((state) => state.bankDetails);
+  const { loading, error, success, data } = useSelector((state) => state.bankDetails);
 
   const [form, setForm] = useState({
     bank_name: "",
@@ -13,6 +13,23 @@ export default function BankDetailsForm({ onSuccess }) {
     account_number: "",
     ifsc_code: "",
   });
+
+  // Fetch existing data on component mount
+  useEffect(() => {
+    dispatch(fetchBankDetails());
+  }, [dispatch]);
+
+  // Autofill form when data is fetched
+  useEffect(() => {
+    if (data) {
+      setForm({
+        bank_name: data.bank_name || "",
+        branch_name: data.branch_name || "",
+        account_number: data.account_number || "",
+        ifsc_code: data.ifsc_code || "",
+      });
+    }
+  }, [data]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });

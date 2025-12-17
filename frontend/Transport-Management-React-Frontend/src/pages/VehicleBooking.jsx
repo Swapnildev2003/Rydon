@@ -17,7 +17,7 @@ import {
 } from "react-icons/fa";
 import { GoogleMap, Marker, InfoWindow } from "@react-google-maps/api";
 import { useNavigate, useLocation } from "react-router-dom";
-import { db, ref, onValue } from "../firebase";
+// import { db, ref, onValue } from "../firebase";
 import { motion, AnimatePresence } from "framer-motion";
 
 const VehicleBooking = () => {

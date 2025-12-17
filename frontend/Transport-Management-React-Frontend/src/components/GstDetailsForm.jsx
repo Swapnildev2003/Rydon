@@ -1,18 +1,32 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { submitGstDetails } from "../redux/slices/gstDetailsSlice";
+import { submitGstDetails, fetchGstDetails } from "../redux/slices/gstDetailsSlice";
 import { uploadToCloudinary } from "../utils/cloudinaryUpload";
 import FormWrapper from "./FormWrapper";
 
-export default function GSTDetailsForm() {
+export default function GSTDetailsForm({ onSuccess }) {
   const dispatch = useDispatch();
-  const { loading, error, success } = useSelector((state) => state.gstDetails);
+  const { loading, error, success, data } = useSelector((state) => state.gstDetails);
 
   const [gstNumber, setGstNumber] = useState("");
   const [gstFile, setGstFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [fileError, setFileError] = useState("");
   const [uploadSuccess, setUploadSuccess] = useState(false);
+
+  // Fetch existing data on component mount
+  useEffect(() => {
+    dispatch(fetchGstDetails());
+  }, [dispatch]);
+
+  // Autofill form when data is fetched
+  useEffect(() => {
+    if (data) {
+      setGstNumber(data.gst_number || "");
+      // Note: We can't pre-populate file inputs for security reasons
+      // But we can show that data exists
+    }
+  }, [data]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -55,9 +69,14 @@ export default function GSTDetailsForm() {
         gst_number: gstNumber,
         gst_certificate_url: cloudinaryUrl,
       };
-      alert("Payload to Django:", payload);
-       dispatch(submitGstDetails(payload));
       
+      const result = await dispatch(submitGstDetails(payload));
+      
+      // Only proceed if submission was successful
+      if (submitGstDetails.fulfilled.match(result)) {
+        // onSuccess will be called via useEffect below
+      }
+       
     } catch (err) {
       console.error("Upload Error:", err);
       setFileError(err.message || "Upload failed. Please try again.");
@@ -65,6 +84,13 @@ export default function GSTDetailsForm() {
       setUploadProgress(0);
     }
   };
+
+  // ✅ Trigger onSuccess callback when submission is successful
+  useEffect(() => {
+    if (success && typeof onSuccess === "function") {
+      onSuccess();
+    }
+  }, [success, onSuccess]);
 
   return (
     <FormWrapper title="GST Details">
