@@ -3,6 +3,56 @@
 # ========================================
 
 # ========================================
+# MOBILE APP (React Native/Expo)
+# ========================================
+
+# Dependencies
+mobile/**/node_modules/
+
+# Expo
+mobile/**/.expo/
+mobile/**/dist/
+mobile/**/web-build/
+
+# Build artifacts
+mobile/**/android/app/build/
+mobile/**/android/.gradle/
+mobile/**/android/build/
+mobile/**/ios/build/
+mobile/**/ios/Pods/
+
+# Native files
+mobile/**/*.orig.*
+mobile/**/*.jks
+mobile/**/*.p8
+mobile/**/*.p12
+mobile/**/*.key
+mobile/**/*.mobileprovision
+
+# Metro
+mobile/**/.metro-health-check*
+
+# Debug
+mobile/**/npm-debug.*
+mobile/**/yarn-debug.*
+mobile/**/yarn-error.*
+
+# ========================================
+# FRONTEND (React/Vite)
+# ========================================
+
+# Dependencies
+frontend/**/node_modules/
+
+# Build outputs
+frontend/**/dist/
+frontend/**/build/
+frontend/**/.vite/
+
+# Cache
+frontend/**/.cache/
+
+# ========================================
 # BACKEND (Django/Python)
 # ========================================
 

@@ -9,7 +9,9 @@ from django.conf import settings
 from django.utils import timezone
 from django.contrib.auth.hashers import make_password, check_password
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import PhoneOTP
 from .serializers import PhoneSerializer, OTPVerifySerializer,generate_tokens_for_user
 
@@ -208,23 +210,46 @@ from .serializers import (
 # -------------------- PERSONAL DETAILS --------------------
 
 @api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def create_personal_details(request):
-    serializer = PersonalDetailsSerializer(data=request.data)
+    # Check if user already has personal details
+    existing = PersonalDetails.objects.filter(user=request.user).first()
+    if existing:
+        # Update existing record instead of creating duplicate
+        serializer = PersonalDetailsSerializer(existing, data=request.data, partial=True)
+    else:
+        # Create new record linked to authenticated user
+        serializer = PersonalDetailsSerializer(data=request.data)
+    
     if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=201)
+        serializer.save(user=request.user)  # Auto-link to authenticated user
+        return Response(serializer.data, status=201 if not existing else 200)
     return Response(serializer.errors, status=400)
 
 @api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def get_personal_details(request):
-    data = PersonalDetails.objects.all()
-    serializer = PersonalDetailsSerializer(data, many=True)
-    return Response(serializer.data)
+    # Only return the authenticated user's personal details
+    try:
+        # Filter by user, handling both old (nullable) and new (required) schema
+        data = PersonalDetails.objects.filter(user=request.user).first()
+        if data:
+            serializer = PersonalDetailsSerializer(data)
+            return Response(serializer.data)
+        return Response({"message": "No personal details found"}, status=404)
+    except Exception as e:
+        # Handle ProgrammingError if database schema doesn't match
+        return Response({"error": str(e), "message": "Database migration may be required. Please run: python manage.py migrate"}, status=500)
 
 @api_view(['PUT'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def update_personal_details(request, pk):
     try:
-        instance = PersonalDetails.objects.get(pk=pk)
+        # Only allow updating own records
+        instance = PersonalDetails.objects.get(pk=pk, user=request.user)
     except PersonalDetails.DoesNotExist:
         return Response({"error": "Not found"}, status=404)
 
@@ -246,24 +271,42 @@ def delete_personal_details(request, pk):
 # -------------------- GST DETAILS --------------------
 
 @api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def create_gst_details(request):
-    print("Incoming data:", request.data)  
-    serializer = GSTDetailsSerializer(data=request.data)
+    # Check if user already has GST details
+    existing = GSTDetails.objects.filter(user=request.user).first()
+    if existing:
+        # Update existing record instead of creating duplicate
+        serializer = GSTDetailsSerializer(existing, data=request.data, partial=True)
+    else:
+        # Create new record linked to authenticated user
+        serializer = GSTDetailsSerializer(data=request.data)
+    
     if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=201)
+        serializer.save(user=request.user)  # Auto-link to authenticated user
+        return Response(serializer.data, status=201 if not existing else 200)
     return Response(serializer.errors, status=400)
 
 @api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def get_gst_details(request):
-    data = GSTDetails.objects.all()
-    serializer = GSTDetailsSerializer(data, many=True)
-    return Response(serializer.data)
+    # Only return the authenticated user's GST details
+    try:
+        data = GSTDetails.objects.get(user=request.user)
+        serializer = GSTDetailsSerializer(data)
+        return Response(serializer.data)
+    except GSTDetails.DoesNotExist:
+        return Response({"message": "No GST details found"}, status=404)
 
 @api_view(['PUT'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def update_gst_details(request, pk):
     try:
-        instance = GSTDetails.objects.get(pk=pk)
+        # Only allow updating own records
+        instance = GSTDetails.objects.get(pk=pk, user=request.user)
     except GSTDetails.DoesNotExist:
         return Response({"error": "Not found"}, status=404)
 
@@ -285,23 +328,42 @@ def delete_gst_details(request, pk):
 # -------------------- DOCUMENTS UPLOAD --------------------
 
 @api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def create_documents(request):
-    serializer = DocumentsUploadSerializer(data=request.data)
+    # Check if user already has documents
+    existing = DocumentsUpload.objects.filter(user=request.user).first()
+    if existing:
+        # Update existing record instead of creating duplicate
+        serializer = DocumentsUploadSerializer(existing, data=request.data, partial=True)
+    else:
+        # Create new record linked to authenticated user
+        serializer = DocumentsUploadSerializer(data=request.data)
+    
     if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=201)
+        serializer.save(user=request.user)  # Auto-link to authenticated user
+        return Response(serializer.data, status=201 if not existing else 200)
     return Response(serializer.errors, status=400)
 
 @api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def get_documents(request):
-    data = DocumentsUpload.objects.all()
-    serializer = DocumentsUploadSerializer(data, many=True)
-    return Response(serializer.data)
+    # Only return the authenticated user's documents
+    try:
+        data = DocumentsUpload.objects.get(user=request.user)
+        serializer = DocumentsUploadSerializer(data)
+        return Response(serializer.data)
+    except DocumentsUpload.DoesNotExist:
+        return Response({"message": "No documents found"}, status=404)
 
 @api_view(['PUT'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def update_documents(request, pk):
     try:
-        instance = DocumentsUpload.objects.get(pk=pk)
+        # Only allow updating own records
+        instance = DocumentsUpload.objects.get(pk=pk, user=request.user)
     except DocumentsUpload.DoesNotExist:
         return Response({"error": "Not found"}, status=404)
 
@@ -323,23 +385,42 @@ def delete_documents(request, pk):
 # -------------------- BANK DETAILS --------------------
 
 @api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def create_bank_details(request):
-    serializer = BankDetailsSerializer(data=request.data)
+    # Check if user already has bank details
+    existing = BankDetails.objects.filter(user=request.user).first()
+    if existing:
+        # Update existing record instead of creating duplicate
+        serializer = BankDetailsSerializer(existing, data=request.data, partial=True)
+    else:
+        # Create new record linked to authenticated user
+        serializer = BankDetailsSerializer(data=request.data)
+    
     if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=201)
+        serializer.save(user=request.user)  # Auto-link to authenticated user
+        return Response(serializer.data, status=201 if not existing else 200)
     return Response(serializer.errors, status=400)
 
 @api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def get_bank_details(request):
-    data = BankDetails.objects.all()
-    serializer = BankDetailsSerializer(data, many=True)
-    return Response(serializer.data)
+    # Only return the authenticated user's bank details
+    try:
+        data = BankDetails.objects.get(user=request.user)
+        serializer = BankDetailsSerializer(data)
+        return Response(serializer.data)
+    except BankDetails.DoesNotExist:
+        return Response({"message": "No bank details found"}, status=404)
 
 @api_view(['PUT'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def update_bank_details(request, pk):
     try:
-        instance = BankDetails.objects.get(pk=pk)
+        # Only allow updating own records
+        instance = BankDetails.objects.get(pk=pk, user=request.user)
     except BankDetails.DoesNotExist:
         return Response({"error": "Not found"}, status=404)
 

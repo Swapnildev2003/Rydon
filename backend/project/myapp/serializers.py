@@ -17,22 +17,22 @@ class OTPVerifySerializer(serializers.Serializer):
 class PersonalDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = PersonalDetails
-        fields = '__all__'
+        fields = ['full_name', 'email', 'phone_number', 'address']  # Exclude user field
 
 class GSTDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = GSTDetails
-        fields = '__all__'
+        fields = ['gst_number', 'gst_certificate_url']  # Exclude user field
 
 class DocumentsUploadSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentsUpload
-        fields = '__all__'
+        fields = ['pan_card_url', 'aadhaar_card_url', 'supporting_documents_urls']  # Exclude user field
 
 class BankDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = BankDetails
-        fields = '__all__'
+        fields = ['bank_name', 'branch_name', 'account_number', 'ifsc_code']  # Exclude user field
         
 class DriverSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,11 +1,13 @@
 from django.urls import path
 from . import views
+from rest_framework_simplejwt.views import TokenRefreshView
 
 
 
 urlpatterns = [
     path('send-otp/', views.send_otp),
     path('verify-otp/', views.verify_otp),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
       # Personal Details
     path('personal-details/', views.get_personal_details),
     path('personal-details/create/', views.create_personal_details),
