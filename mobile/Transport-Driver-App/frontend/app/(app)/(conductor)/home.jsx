@@ -45,11 +45,11 @@ export default function ConductorHome({ navigation }) {
       };
 
       // Fetch conductor details
-      const conductorResponse = await axios.get(`http://10.232.59.58/api/conductor-details/${conductorId}/`);
+      const conductorResponse = await axios.get(`http://10.42.239.244:8000/api/conductor-details/${conductorId}/`);
       setConductorData(conductorResponse.data);
 
       // Fetch assigned bus data
-      const busResponse = await axios.get(`http://10.232.59.58/api/bus/driver/${conductorId}/`);
+      const busResponse = await axios.get(`http://10.42.239.244:8000/api/bus/driver/${conductorId}/`);
       if (!busResponse.data) {
         throw new Error('No assigned bus found for this conductor.');
       }

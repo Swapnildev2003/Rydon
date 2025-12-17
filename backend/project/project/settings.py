@@ -88,12 +88,12 @@ CHANNEL_LAYERS = {
 }
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:19006",  # React Native development server
-    "http://10.40.11.244",    # Your Django backend IP
+    "http://10.42.239.244",    # Your Django backend IP
     "ws://10.40.11.244",      # WebSocket connection to backend
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://10.40.11.244",
+    "http://10.42.239.244",
     "ws://10.40.11.244",
 ]
 
