@@ -1,25 +1,119 @@
 # ========================================
-# Transport Management System - Root .gitignore
+# Transport Management System - Complete .gitignore
 # ========================================
+
+# ========================================
+# GLOBAL EXCLUSIONS
+# ========================================
+
+# Dependencies
+**/node_modules/
+
+# Logs and debug files
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Editor and OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ========================================
+# BACKEND (Django/Python)
+# ========================================
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Django-specific
+*.sqlite3
+db.sqlite3
+backend/project/db.sqlite3
+backend/project/media/
+backend/project/staticfiles/
+
+# Django migrations (keep only __init__.py)
+**/migrations/[0-9]*.py
+backend/**/migrations/[0-9]*.py
+
+# Python packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Testing and coverage
+.coverage
+.pytest_cache/
+.tox/
+.nox/
+htmlcov/
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ========================================
+# FRONTEND (React/Vite)
+# ========================================
+
+# Build outputs
+frontend/**/dist/
+frontend/**/build/
+frontend/**/.vite/
+frontend/**/.cache/
+frontend/**/coverage/
+
+# Dependency directories
+frontend/**/.pnp
+frontend/**/.pnp.js
 
 # ========================================
 # MOBILE APP (React Native/Expo)
 # ========================================
 
-# Dependencies
-mobile/**/node_modules/
-
 # Expo
 mobile/**/.expo/
 mobile/**/dist/
 mobile/**/web-build/
+mobile/**/expo-env.d.ts
 
-# Build artifacts
+# Android build artifacts
 mobile/**/android/app/build/
 mobile/**/android/.gradle/
 mobile/**/android/build/
+mobile/**/android/app/release/
+mobile/**/android/app/debug/
+mobile/**/android/gradle/
+mobile/**/android/gradlew
+mobile/**/android/gradlew.bat
+mobile/**/android/local.properties
+
+# iOS build artifacts
 mobile/**/ios/build/
 mobile/**/ios/Pods/
+mobile/**/ios/*.xcworkspace
+mobile/**/ios/*.xcodeproj
+mobile/**/ios/Podfile.lock
 
 # Native files
 mobile/**/*.orig.*
@@ -32,72 +126,49 @@ mobile/**/*.mobileprovision
 # Metro
 mobile/**/.metro-health-check*
 
-# Debug
-mobile/**/npm-debug.*
-mobile/**/yarn-debug.*
-mobile/**/yarn-error.*
+# TypeScript
+*.tsbuildinfo
+
+# Fastlane
+mobile/**/fastlane/report.xml
+mobile/**/fastlane/Preview.html
+mobile/**/fastlane/screenshots
+mobile/**/fastlane/test_output
+
+# Bundle artifacts
+mobile/**/*.jsbundle
 
 # ========================================
-# FRONTEND (React/Vite)
+# DOCUMENTATION
 # ========================================
 
-# Dependencies
-frontend/**/node_modules/
-
-# Build outputs
-frontend/**/dist/
-frontend/**/build/
-frontend/**/.vite/
-
-# Cache
-frontend/**/.cache/
+# Generated docs
+docs/_build/
+docs/.doctrees/
 
 # ========================================
-# BACKEND (Django/Python)
+# MISCELLANEOUS
 # ========================================
 
-# Bytecode and cache
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Django-specific
-*.log
-*.pot
-*.pyc
-*.sqlite3
-db.sqlite3
-backend/project/db.sqlite3
-media/
-staticfiles/
-
-# Django migrations (ignore all except __init__.py)
-**/migrations/
-!*/migrations/__init__.py
-
-# Testing
-.coverage
-.pytest_cache/
-.tox/
-.nox/
-
-# Packaging
-build/
-dist/
-*.egg-info/
-.eggs/
-pip-wheel-metadata/
-
-# Docker & runtime
+# Runtime data
+pids
 *.pid
 *.seed
 *.pid.lock
 
-# Jupyter Notebooks
-.ipynb_checkpoints/
+# Coverage directory
+coverage/
+*.lcov
+.nyc_output
 
-# ========================================
-# FRONTEND (React + Vite)
+# Temporary files
+tmp/
+*.tmp
+*.bak
+
+# Package files
+*.tgz
+*.tar.gz
 # ========================================
 
 # Dependencies
