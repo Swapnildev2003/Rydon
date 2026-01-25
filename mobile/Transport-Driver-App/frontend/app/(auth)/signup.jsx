@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import axios from 'axios';
+import API_CONFIG, { getApiUrl } from '../../constants/ApiConfig';
 
 export default function SignupScreen() {
   const { role } = useLocalSearchParams();
@@ -94,7 +95,7 @@ export default function SignupScreen() {
           secureTextEntry
         />
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.signupButton}
           onPress={handleSignup}
         >

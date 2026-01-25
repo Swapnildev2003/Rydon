@@ -9,6 +9,7 @@ export default function IndexScreen() {
     const checkAuth = async () => {
       try {
         // Try fetching token and role
+
         const token = await AsyncStorage.getItem('access_token');
         const role = await AsyncStorage.getItem('user_role');
 

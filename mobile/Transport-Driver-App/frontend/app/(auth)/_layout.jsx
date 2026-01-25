@@ -17,38 +17,39 @@ export default function AuthLayout() {
         headerShadowVisible: true,
       }}
     >
-      <Stack.Screen 
-        name="role" 
-        options={{ 
+      <Stack.Screen
+        name="role"
+        options={{
           title: 'Select Role',
-         
-        }} 
+          headerBackVisible: false,
+        }}
       />
-      <Stack.Screen 
-        name="login" 
-        options={{ 
-        
-       headerBackVisible: true,
-             
-          headerTitle: () => (
-            <View >
-             
-              <Text style={{ color: '#fff', fontSize: 18,marginBottom:8 }}>Login in </Text>
-            </View>
-          ),
-        }} 
-      />
-      <Stack.Screen 
-        name="signup" 
-        options={{ 
-         
+      <Stack.Screen
+        name="signup"
+        options={{
+
           headerTitle: () => (
             <View style={{ alignItems: 'center' }}>
               <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold' }}>Sign Up</Text>
             </View>
           ),
-        }} 
+        }}
       />
+      <Stack.Screen
+        name="login"
+        options={{
+
+          headerBackVisible: true,
+
+          headerTitle: () => (
+            <View >
+
+              <Text style={{ color: '#fff', fontSize: 18, marginBottom: 8 }}>Login in </Text>
+            </View>
+          ),
+        }}
+      />
+
     </Stack>
   );
 }

@@ -17,13 +17,20 @@ export default function LoginScreen() {
         email,
         password,
       });
-     
+
       // Store JWT tokens and user data
       await AsyncStorage.setItem('access_token', response.data.access);
       await AsyncStorage.setItem('refresh_token', response.data.refresh);
       await AsyncStorage.setItem('user_id', response.data[`${role}_id`].toString());
       await AsyncStorage.setItem('user_name', response.data.name);
       await AsyncStorage.setItem('user_role', role);
+
+      // Store vehicle info for drivers (from login response)
+      if (role === 'driver' && response.data.vehicle_type) {
+        await AsyncStorage.setItem('vehicle_type', response.data.vehicle_type);
+        await AsyncStorage.setItem('vehicle_id', response.data.vehicle_id?.toString() || '');
+      }
+
       const accessToken = await AsyncStorage.getItem('access_token');
       console.log('Access Token:', accessToken);
       Alert.alert('Login Successful');
@@ -79,7 +86,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.loginButton}
           onPress={handleLogin}
         >
