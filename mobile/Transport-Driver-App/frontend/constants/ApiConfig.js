@@ -8,8 +8,8 @@
 
 const API_CONFIG = {
   // Your computer's IP address - Updated automatically
-  BASE_URL: 'http://10.222.127.58:8000',  // Your current IP address
-  WS_BASE_URL: 'ws://10.222.127.58:8000',  // Your current IP address
+  BASE_URL: 'http://10.66.167.244:8000',  // Your current IP address
+  WS_BASE_URL: 'ws://10.66.167.244:8000',  // Your current IP address
 
   // API endpoints
   ENDPOINTS: {

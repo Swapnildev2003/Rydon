@@ -6,7 +6,7 @@ import axios from 'axios';
 const fetchDriverDetails = async (driverId) => {
   if (!driverId) return null;
   try {
-    const response = await axios.get(`http://127.0.0.1:8000/api/driver-details/${driverId}/`);
+    const response = await axios.get(`http://localhost:8000/api/driver-details/${driverId}/`);
     return response.data.driver;
   } catch (error) {
     console.error('Error fetching driver details:', error);
@@ -17,7 +17,7 @@ const fetchDriverDetails = async (driverId) => {
 const fetchConductorDetails = async (conductorId) => {
   if (!conductorId) return null;
   try {
-    const response = await axios.get(`http://127.0.0.1:8000/api/conductor-details/${conductorId}/`);
+    const response = await axios.get(`http://localhost:8000/api/conductor-details/${conductorId}/`);
     return response.data.conductor;
   } catch (error) {
     console.error('Error fetching conductor details:', error);
@@ -29,14 +29,14 @@ export const fetchVehicles = createAsyncThunk(
   'vehicle/fetchVehicles',
   async (type, { rejectWithValue }) => {
     try {
-      const url = `http://127.0.0.1:8000/api/${type}-details/`;
+      const url = `http://localhost:8000/api/${type}-details/`;
       const response = await axios.get(url);
-      
+
       // Enhance vehicle data with related details
       const enhancedData = await Promise.all(
         response.data.map(async (vehicle) => {
           const enhancedVehicle = { ...vehicle };
-          
+
           // Add driver details
           if (vehicle.driver) {
             const driver = await fetchDriverDetails(vehicle.driver);
@@ -46,7 +46,7 @@ export const fetchVehicles = createAsyncThunk(
             enhancedVehicle.driver_name = 'No Driver';
             enhancedVehicle.driver_license = 'N/A';
           }
-          
+
           // Add conductor details for buses
           if (type === 'bus') {
             if (vehicle.conductor) {
@@ -56,11 +56,11 @@ export const fetchVehicles = createAsyncThunk(
               enhancedVehicle.conductor_name = 'No Conductor';
             }
           }
-          
+
           return enhancedVehicle;
         })
       );
-      
+
       return { type, data: enhancedData };
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch vehicles');
@@ -72,7 +72,7 @@ export const addVehicle = createAsyncThunk(
   'vehicle/addVehicle',
   async ({ type, data }, { rejectWithValue }) => {
     try {
-      const url = `http://127.0.0.1:8000/api/create-${type}/`;
+      const url = `http://localhost:8000/api/create-${type}/`;
       const response = await axios.post(url, data);
       return { type, vehicle: response.data };
     } catch (error) {
@@ -85,7 +85,7 @@ export const updateVehicle = createAsyncThunk(
   'vehicle/updateVehicle',
   async ({ type, id, data }, { rejectWithValue }) => {
     try {
-      const url = `http://127.0.0.1:8000/api/update-${type}/${id}/`;
+      const url = `http://localhost:8000/api/update-${type}/${id}/`;
       const response = await axios.put(url, data);
       return { type, vehicle: response.data };
     } catch (error) {
@@ -98,7 +98,7 @@ export const deleteVehicle = createAsyncThunk(
   'vehicle/deleteVehicle',
   async ({ type, id }, { rejectWithValue }) => {
     try {
-      const url = `http://127.0.0.1:8000/api/delete-${type}/${id}/`;
+      const url = `http://localhost:8000/api/delete-${type}/${id}/`;
       await axios.delete(url);
       return { type, id };
     } catch (error) {
@@ -193,9 +193,9 @@ const vehicleSlice = createSlice({
   },
 });
 
-export const { 
-  setActiveSection, 
-  setSelectedVehicle, 
+export const {
+  setActiveSection,
+  setSelectedVehicle,
   clearSelectedVehicle,
   resetVehicleStatus,
 } = vehicleSlice.actions;

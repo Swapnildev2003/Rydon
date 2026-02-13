@@ -18,9 +18,12 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Environment files
-.env
-.env.*
-!.env.example
+# .env
+# .env.*
+# .env*
+#  .env
+# **/ .env
+# !.env.example
 
 # Editor and OS
 .vscode/
@@ -66,11 +69,15 @@ pip-wheel-metadata/
 htmlcov/
 
 # Virtual environments
-venv/
-env/
-ENV/
-env.bak/
-venv.bak/
+# venv/
+# env/
+# ENV/
+# env.bak/
+# venv.bak/
+# source/
+# **/source/
+# **/venv/
+# **/env/
 
 # ========================================
 # FRONTEND (React/Vite)

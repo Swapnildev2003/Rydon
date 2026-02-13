@@ -6,7 +6,7 @@ export const fetchDrivers = createAsyncThunk(
   'staff/fetchDrivers',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('http://127.0.0.1:8000/api/driver-details/');
+      const response = await axios.get('http://localhost:8000/api/driver-details/');
       return response.data.drivers;
     } catch (error) {
       return rejectWithValue(error.response.data);
@@ -18,7 +18,7 @@ export const fetchConductors = createAsyncThunk(
   'staff/fetchConductors',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('http://127.0.0.1:8000/api/conductor-details/');
+      const response = await axios.get('http://localhost:8000/api/conductor-details/');
       return response.data.conductors;
     } catch (error) {
       return rejectWithValue(error.response.data);
@@ -56,7 +56,7 @@ const staffSlice = createSlice({
         state.status = 'failed';
         state.error = action.payload || 'Failed to fetch drivers';
       })
-      
+
       // Fetch Conductors
       .addCase(fetchConductors.pending, (state) => {
         state.status = 'loading';

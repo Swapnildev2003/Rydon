@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual environments - CRITICAL
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+source/
+**/source/
+**/venv/
+**/env/
+
+# Django
+*.sqlite3
+db.sqlite3
+project/db.sqlite3
+project/media/
+project/staticfiles/
+
+# Django migrations (keep only __init__.py)
+**/migrations/[0-9]*.py
+
+# Python packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

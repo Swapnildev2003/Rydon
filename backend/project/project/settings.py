@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "myapp",
     'corsheaders',
     'channels',
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -168,8 +169,10 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'myapp.authentication.DriverJWTAuthentication',
     ),
+    'DEFAULT_PERMISSION_CLASSES': [],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 SIMPLE_JWT = {
@@ -181,6 +184,14 @@ SIMPLE_JWT = {
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-TWILIO_ACCOUNT_SID = config("TWILIO_ACCOUNT_SID")
-TWILIO_AUTH_TOKEN = config("TWILIO_AUTH_TOKEN")
-TWILIO_PHONE_NUMBER = config("TWILIO_PHONE_NUMBER")
+TWILIO_ACCOUNT_SID = config("TWILIO_ACCOUNT_SID", default="dummy")
+TWILIO_AUTH_TOKEN = config("TWILIO_AUTH_TOKEN", default="dummy")
+TWILIO_PHONE_NUMBER = config("TWILIO_PHONE_NUMBER", default="dummy")
+
+# Swagger/OpenAPI configuration
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Transport Management API',
+    'DESCRIPTION': 'API documentation for the Transport Management System',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}

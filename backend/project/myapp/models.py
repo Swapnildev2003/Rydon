@@ -107,7 +107,15 @@ class Driver(models.Model):
     contact_number = models.CharField(max_length=15)
     license_number = models.CharField(max_length=50)
     joining_date = models.DateField()
-   
+    
+    # Assigned vehicle info (updated when vehicle is assigned)
+    vehicle_type = models.CharField(
+        max_length=10, 
+        null=True, 
+        blank=True,
+        choices=[('bus', 'Bus'), ('car', 'Car'), ('bike', 'Bike')]
+    )
+    vehicle_id = models.PositiveIntegerField(null=True, blank=True)
 
    
     
@@ -145,6 +153,7 @@ class Vehicle(models.Model):
     fuel_type = models.CharField(max_length=10)
     model_year = models.PositiveIntegerField()
     initial_status = models.CharField(max_length=12, default='Active')
+    is_booked = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -199,14 +208,14 @@ class Bus(Vehicle):
     has_ac = models.BooleanField(default=False)
     has_wifi = models.BooleanField(default=False)
     
-    driver = models.ForeignKey(
+    driver = models.OneToOneField(
         Driver,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
        
     )
-    conductor = models.ForeignKey(
+    conductor = models.OneToOneField(
         Conductor,
         on_delete=models.SET_NULL,
         null=True,
@@ -247,7 +256,7 @@ class Car(Vehicle):
     
     seating_capacity= models.PositiveIntegerField(default=4)
     
-    driver = models.ForeignKey(
+    driver = models.OneToOneField(
         Driver,
         on_delete=models.SET_NULL,
         null=True,
@@ -278,7 +287,7 @@ class Bike(Vehicle):
     bike_type = models.CharField(max_length=15)
     # helmet_provided = models.BooleanField(default=True)
     
-    driver = models.ForeignKey(
+    driver = models.OneToOneField(
         Driver,
         on_delete=models.SET_NULL,
         null=True,
@@ -442,7 +451,7 @@ class BookingRequest(models.Model):
     ]
 
     user = models.ForeignKey(PhoneOTP, on_delete=models.CASCADE)
-    driver =  models.ForeignKey(Driver, on_delete=models.CASCADE)
+    drivers = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='booking_requests')
     from_address = models.CharField(max_length=255)
     to_address = models.CharField(max_length=255)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')

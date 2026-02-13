@@ -27,16 +27,15 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
+# Copy project files (including .env)
 COPY . .
 
-# Create a non-root user for security
-# RUN addgroup --system appgroup && \
-#     adduser --system --ingroup appgroup appuser && \
-#     chown -R appuser:appgroup /app
+# Copy .env file explicitly (in case it's in .dockerignore)
+COPY .env .env
 
-# Switch to non-root user
-# USER appuser
+# Copy start script
+COPY start.sh .
+RUN chmod +x start.sh
 
 # Expose port
 EXPOSE 8000
@@ -47,3 +46,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Run with Daphne (ASGI server for WebSocket + HTTP)
 CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "project.asgi:application"]
+

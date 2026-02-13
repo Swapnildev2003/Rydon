@@ -41,22 +41,32 @@ export const useDriverData = () => {
                 getApiUrl(API_CONFIG.ENDPOINTS.DRIVER_DETAILS(driverId)),
                 config
             );
-            setDriverData(driverResponse.data);
 
-            // Fetch vehicle data using stored vehicle_type (single API call!)
-            if (vehicleType && vehicleId) {
-                const vehicleEndpoint = getVehicleEndpoint(vehicleType, driverId);
+            const driverResult = driverResponse.data;
+            setDriverData(driverResult);
+            console.log('Driver details:', driverResult);
 
+            // Use driverResult (not driverData state, which hasn't updated yet)
+            const vType = driverResult?.driver?.vehicle_type;
+            const vId = driverResult?.driver?.vehicle_id;
+
+            if (vType && vId) {
+                const vehicleEndpoint = getVehicleEndpoint(vType, driverId);
+                console.log("Vehicle endpoint:", vehicleEndpoint);
                 if (vehicleEndpoint) {
                     try {
                         const vehicleResponse = await axios.get(
                             getApiUrl(vehicleEndpoint),
                             config
                         );
-                        setVehicleData(vehicleResponse.data);
+                        // Add the driver's vehicle_type category ("car"/"bike"/"bus") 
+                        // so WebSocket sends the right category, not the sub-type ("SUV")
+                        setVehicleData({
+                            ...vehicleResponse.data,
+                            vehicle_type: vType,  // "car", "bike", or "bus" from Driver model
+                        });
                     } catch (err) {
                         console.log('Vehicle fetch error:', err);
-                        // Vehicle might have been unassigned, clear stored data
                         if (err.response?.status === 404) {
                             await AsyncStorage.removeItem('vehicle_type');
                             await AsyncStorage.removeItem('vehicle_id');
@@ -64,7 +74,6 @@ export const useDriverData = () => {
                     }
                 }
             } else {
-                // No vehicle assigned to this driver
                 console.log('No vehicle assigned to driver');
                 setVehicleData(null);
             }

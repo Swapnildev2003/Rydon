@@ -7,7 +7,7 @@ export const submitDocuments = createAsyncThunk(
   async (formData, { rejectWithValue }) => {
     try {
       const config = { headers: { 'Content-Type': 'multipart/form-data' } };
-      const res = await axios.post('http://127.0.0.1:8000/api/documents/create/', formData, config);
+      const res = await axios.post('http://localhost:8000/api/documents/create/', formData, config);
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);

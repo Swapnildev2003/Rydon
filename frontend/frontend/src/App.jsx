@@ -20,6 +20,7 @@ import "./App.css";
 import BusSeatSelectionPage from "./pages/BusSeatSelection";
 import BusBooking from "./pages/BusBooking";
 import VehicleBooking from "./pages/VehicleBooking";
+import BookingConfirmation from "./pages/BookingConfirmation";
 
 // Separate component to handle route-based navbar logic
 function AppRoutes() {
@@ -30,6 +31,7 @@ function AppRoutes() {
     location.pathname === "/user" ||
     location.pathname === "/operator-dashboard" ||
     location.pathname === "/user-booking" ||
+    location.pathname === "/booking-confirmation" ||
     location.pathname === "/book"; // Add the booking route
 
   return (
@@ -46,8 +48,9 @@ function AppRoutes() {
         <Route path="/user-booking" element={<BookingForm />} />
         <Route path="/bus-seats" element={<BusSeatSelectionPage />} />
         <Route path="/bus-results" element={<BusBooking />} />
-         <Route path="/vehicle-results" element={<VehicleBooking />} />
+        <Route path="/vehicle-results" element={<VehicleBooking />} />
         <Route path="/book" element={<TicketBookingPage />} />
+        <Route path="/booking-confirmation" element={<BookingConfirmation />} />
       </Routes>
     </>
   );
@@ -63,10 +66,10 @@ function App() {
     <div className="font-sans">
       <Provider store={store}>
         <GoogleOAuthProvider clientId="683203259162-ppmbf6io7gvae0qpv21m7suduvvuokin.apps.googleusercontent.com">
-          <LoadScript 
-            googleMapsApiKey="AIzaSyC_QOHqCewQWCZakHfvDtN3Q9kOOCiqB9c"  
-            libraries={["places","geometry"]}
-            
+          <LoadScript
+            googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+            libraries={["places", "geometry"]}
+
           >
             <BrowserRouter>
               <AppRoutes />

@@ -6,7 +6,7 @@ export const sendOtp = createAsyncThunk(
   'auth/sendOtp',
   async ({ phone, role }, { rejectWithValue }) => {
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/send-otp/', {
+      const response = await axios.post('http://localhost:8000/api/send-otp/', {
         phone,
         role,
       });
@@ -22,7 +22,7 @@ export const verifyOtp = createAsyncThunk(
   'auth/verifyOtp',
   async ({ phone, otp, role }, { rejectWithValue }) => {
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/verify-otp/', {
+      const response = await axios.post('http://localhost:8000/api/verify-otp/', {
         phone,
         otp,
         role,

@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from rest_framework_simplejwt.views import TokenRefreshView
-
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 
 urlpatterns = [
@@ -89,5 +89,11 @@ urlpatterns = [
     path('bookings/create/', views.create_booking, name='create_booking'),
     path('otp-entries/', views.get_all_otp_entries, name='get_all_otp_entries'),
     path('bookings/', views.get_booking_requests, name='get-bookings'),
-    path('bookings/driver-id/', views.get_bookings_by_driver, name='get-bookings')
+    path('bookings/driver-id/', views.get_bookings_by_driver, name='get-bookings'),
+    path('bookings/<int:booking_id>/update-status/', views.update_booking_status, name='update-booking-status'),
+    
+    # Swagger/OpenAPI endpoints
+    path('schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]

@@ -5,7 +5,7 @@ from django.utils.dateparse import parse_date
 from .constants import get_role_choices
 
 class PhoneSerializer(serializers.Serializer):
-    phone = serializers.RegexField(regex=r"^\d{10}$", max_length=15)
+    phone = serializers.RegexField(regex=r"^\d{10}$", max_length=10)
     role = serializers.ChoiceField(choices=get_role_choices())
 
 class OTPVerifySerializer(serializers.Serializer):
@@ -83,12 +83,12 @@ class BusRouteSerializer(serializers.ModelSerializer):
         return value
 
 class BookingRequestSerializer(serializers.ModelSerializer):
-    driver = serializers.PrimaryKeyRelatedField(queryset=Driver.objects.all())
+    drivers = serializers.PrimaryKeyRelatedField(queryset=Driver.objects.all())
     user = serializers.PrimaryKeyRelatedField(queryset=PhoneOTP.objects.all())
 
     class Meta:
         model = BookingRequest
-        fields = ['id', 'user', 'driver', 'from_address', 'to_address', 'status', 'created_at']
+        fields = ['id', 'user', 'drivers', 'from_address', 'to_address', 'status', 'created_at']
         read_only_fields = ['status', 'created_at']
 # class DriverResponseSerializer(serializers.Serializer):
 #     request_id = serializers.IntegerField()
@@ -127,11 +127,23 @@ class BikeRouteSerializer(serializers.ModelSerializer):
         fields = '__all__'
         
 def generate_tokens_for_user(user, role):
-    refresh = RefreshToken.for_user(user)  # Generate JWT tokens
-    return {
+    refresh = RefreshToken.for_user(user)
+    
+    # Store role inside the token so our custom auth knows to look in Driver/Conductor table
+    refresh["role"] = role
+    refresh.access_token["role"] = role
+    
+    response = {
         'refresh': str(refresh),
         'access': str(refresh.access_token),
-         f'{role}_id': user.id,
+        f'{role}_id': user.id,
         'role': role,
         'name': user.name,
     }
+    
+    # Include vehicle info for drivers (from Driver model fields)
+    if role == 'driver' and hasattr(user, 'vehicle_type'):
+        response['vehicle_type'] = user.vehicle_type
+        response['vehicle_id'] = user.vehicle_id
+    
+    return response

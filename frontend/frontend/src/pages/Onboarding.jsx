@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Sidebar from "../components/SidebarData";
 import BankDetailsForm from "../components/BankDetailsForm";
-import GSTDetailsForm from "../components/GSTDetailsForm";
+import GSTDetailsForm from "../components/GstDetailsForm";
 import DocumentsUpload from "../components/DocumentsUpload";
 import PersonalDetailsForm from "../components/PersonalDetailsForm";
 

@@ -96,7 +96,7 @@ const VehicleBooking = () => {
           to_address: toCity,
         };
         return axios.post(
-          'http://127.0.0.1:8000/api/bookings/create/',
+          'http://localhost:8000/api/bookings/create/',
           bookingData
         );
       });
@@ -115,7 +115,8 @@ const VehicleBooking = () => {
             vehicle: vehicles[0], // Using first vehicle for confirmation
             fromCity,
             toCity,
-            totalBookings: successfulBookings.length
+            totalBookings: successfulBookings.length,
+            selectedService
           }
         });
       } else {
@@ -157,8 +158,8 @@ const VehicleBooking = () => {
   const fetchVehicleDetails = async (vehicleId) => {
     try {
       const endpoint = selectedService === 'car'
-        ? `http://127.0.0.1:8000/api/car/driver/${vehicleId}/`
-        : `http://127.0.0.1:8000/api/bike/driver/${vehicleId}/`;
+        ? `http://localhost:8000/api/car/driver/${vehicleId}/`
+        : `http://localhost:8000/api/bike/driver/${vehicleId}/`;
 
       const response = await axios.get(endpoint);
       return response.data;
@@ -172,7 +173,7 @@ const VehicleBooking = () => {
   useEffect(() => {
     if (!userLocation) return;
 
-    const WS_URL = 'ws://10.40.11.244:8000/ws/bike/';
+    const WS_URL = 'ws://localhost:8000/ws/bike/';
     const ws = new WebSocket(WS_URL);
 
     ws.onopen = () => {
@@ -187,16 +188,18 @@ const VehicleBooking = () => {
     ws.onmessage = async (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log(data)
+        console.log("WebSocket data:", data)
 
         if (data.type === 'batch_location_update' && Array.isArray(data.data)) {
           // First filter by selected service type
           const serviceVehicles = data.data.filter(item => item.vehicle_type === selectedService);
+          console.log("Filtered vehicles:", serviceVehicles, "selectedService:", selectedService);
           setLiveVehicles(serviceVehicles);
 
           const vehiclesWithDetails = await Promise.all(
             serviceVehicles.map(async (vehicle) => {
               const details = await fetchVehicleDetails(vehicle.id);
+              console.log("Vehicle details for id", vehicle.id, ":", details);
               const distance = calculateDistance(
                 userLocation.lat,
                 userLocation.lng,
@@ -207,31 +210,35 @@ const VehicleBooking = () => {
               return {
                 user_id,
                 ...vehicle,
-                ...details,
+                ...(details || {}),
                 toCity,
                 fromCity,
                 position: { lat: vehicle.latitude, lng: vehicle.longitude },
-                vehicleSubType: selectedService === 'car' ? details.car_type : details.bike_type,
+                vehicleSubType: selectedService === 'car' ? (details?.car_type || '') : (details?.bike_type || ''),
                 distanceFromUser: distance,
                 isLive: true
               };
             })
           );
 
-          // Filter by the vehicle type passed from RideNowUI
+          console.log("vehiclesWithDetails:", vehiclesWithDetails);
+
+          // Filter by the vehicle type passed from RideNowUI (if specified)
           const filteredByType = vehicleType
-            ? vehiclesWithDetails.filter(v =>
-              selectedService === 'car'
-                ? v.car_type.toLowerCase() === vehicleType
-                : v.bike_type.toLowerCase() === vehicleType
-            )
+            ? vehiclesWithDetails.filter(v => {
+              // vehicle_type from API contains the sub-type (SUV, Sedan, Sport, etc.)
+              const vType = (v.vehicle_type || '').toLowerCase();
+              return vType === vehicleType.toLowerCase();
+            })
             : vehiclesWithDetails;
+
+          console.log("filteredByType:", filteredByType, "vehicleType filter:", vehicleType);
 
           // Sort by distance
           const sortedVehicles = [...filteredByType].sort((a, b) =>
             a.distanceFromUser - b.distanceFromUser
           );
-          console.log(sortedVehicles)
+          console.log("Final vehicles:", sortedVehicles);
           setVehicles(sortedVehicles);
           setLoading(false);
         }
@@ -440,7 +447,7 @@ const VehicleBooking = () => {
         {/* Bottom buttons */}
         <div className="p-4 border-t bg-white sticky bottom-0 flex gap-2">
           {/* Book Nearest Vehicle Button */}
-          
+
 
           <button
             onClick={bookNearestVehicle}

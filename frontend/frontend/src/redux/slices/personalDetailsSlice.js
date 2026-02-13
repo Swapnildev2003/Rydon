@@ -5,7 +5,7 @@ export const submitPersonalDetails = createAsyncThunk(
   'personalDetails/submit',
   async (formData, { rejectWithValue }) => {
     try {
-      const res = await axios.post('http://127.0.0.1:8000/api/personal-details/create/', formData);
+      const res = await axios.post('http://localhost:8000/api/personal-details/create/', formData);
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);

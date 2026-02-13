@@ -15,87 +15,49 @@ Transport-Management/
 
 ## 🐳 Docker Setup (Recommended)
 
+The project now uses a unified root-level `docker-compose.yml` to orchestrate all services.
+
 ### Prerequisites
 - [Docker](https://docs.docker.com/get-docker/)
 - [Docker Compose](https://docs.docker.com/compose/install/)
 
-### Backend with Docker
+### Quick Start
+1. **Prepare Environment Files**:
+   Ensure `backend/project/.env` exists with correct database and Twilio credentials.
 
-1. **Navigate to the backend directory:**
-   ```bash
-   cd backend/project
-   ```
-
-2. **Create environment file:**
-   ```bash
-   cp .env.example .env
-   ```
-
-3. **Update `.env` with your values:**
-
-4. **Build and run with Docker Compose:**
+2. **Run Everything**:
+   From the project root directory:
    ```bash
    docker-compose up --build
    ```
 
-5. **Run migrations (in a new terminal):**
+3. **Apply Migrations**:
    ```bash
    docker-compose exec backend python manage.py migrate
    ```
 
-6. **Create superuser (optional):**
-   ```bash
-   docker-compose exec backend python manage.py createsuperuser
-   ```
+---
 
-### Docker Services
+## 🆕 Recent Updates & Features
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| **Backend API** | http://localhost:8000 | Django REST API |
-| **Admin Panel** | http://localhost:8000/admin | Django Admin |
-| **PostgreSQL** | localhost:5432 | Database |
-| **Redis** | localhost:6379 | WebSocket Channels |
+### 1. Unified Orchestration
+- **Root Docker Compose**: All services (Backend, Frontend, PostgreSQL, Redis) can now be started with a single command from the root directory.
+- **Improved Connectivity**: Configured `ALLOWED_HOSTS` and backend networking to support seamless communication between Mobile, Web, and Docker containers.
 
-### Useful Docker Commands
+### 2. Intelligent Booking System & Networking
+- **Vehicle Availability Flag**: Added an `is_booked` status to the Vehicle model. This allows the system to track whether a vehicle is currently occupied.
+- **Driver Decision Logic**: Implemented **Accept/Reject** buttons in the Driver Mobile App.
+  - **Accept**: Changes booking status and automatically marks the driver's vehicle as "Booked".
+  - **Reject**: Updates booking status to rejected.
+- **Dynamic Routing**: The backend dynamically identifies the vehicle type (Bus/Car/Bike) from the mobile request to update the correct database entry.
+- **IP & Connectivity**: 
+  - Updated global backend reference to `10.222.127.58` across Redux slices and Mobile `ApiConfig.js`.
+  - Configured `ALLOWED_HOSTS` to permit external mobile/web access to the Docker container.
 
-```bash
-# Start all services
-docker-compose up
+### 3. Case-Sensitivity & Linux Support
+- Fixed all frontend import paths to be case-sensitive, ensuring compatibility with Linux-based Docker environments.
 
-# Start in background
-docker-compose up -d
-
-# View logs
-docker-compose logs -f backend
-
-# Stop all services
-docker-compose down
-
-# Stop and remove volumes (clears database)
-docker-compose down -v
-
-# Rebuild after code changes
-docker-compose up --build
-
-# Shell into backend container
-docker-compose exec backend bash
-
-# Run Django commands
-docker-compose exec backend python manage.py <command>
-```
-
-### Health Check
-
-```bash
-# Check if backend is running
-curl http://localhost:8000/admin/
-
-# Test API endpoint
-curl -X POST http://localhost:8000/api/send-otp/ \
-  -H "Content-Type: application/json" \
-  -d '{"phone":"1234567890","role":"operator"}'
-```
+---
 
 ---
 

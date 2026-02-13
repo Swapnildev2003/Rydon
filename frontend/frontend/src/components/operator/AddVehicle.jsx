@@ -3,22 +3,22 @@ import { useSelector, useDispatch } from 'react-redux';
 import { fetchDrivers, fetchConductors } from '../../redux/slices/staffSlice';
 import { addVehicle, updateVehicle } from '../../redux/slices/vehicleSlice';
 
-const AddVehicleForm = ({ 
-  onClose, 
-  mode = 'add', 
-  vehicleType = 'bus', 
-  vehicleData = null, 
-  onSubmitSuccess 
+const AddVehicleForm = ({
+  onClose,
+  mode = 'add',
+  vehicleType = 'bus',
+  vehicleData = null,
+  onSubmitSuccess
 }) => {
   const [slideIn, setSlideIn] = useState(false);
   const [type, setType] = useState(vehicleType);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState(null);
-  
+
   const { drivers, conductors, status: staffStatus } = useSelector(state => state.staff);
   const dispatch = useDispatch();
-  
+
   const [formData, setFormData] = useState({
     licensePlate: "",
     registrationNumber: "",
@@ -38,7 +38,7 @@ const AddVehicleForm = ({
 
   useEffect(() => {
     setSlideIn(true);
-    
+
     const initializeForm = async () => {
       setInitializing(true);
       try {
@@ -46,7 +46,7 @@ const AddVehicleForm = ({
           dispatch(fetchDrivers());
           dispatch(fetchConductors());
         }
-        
+
         if (mode === 'edit' && vehicleData) {
           const mappedData = {
             licensePlate: vehicleData.license_plate || "",
@@ -124,7 +124,7 @@ const AddVehicleForm = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (initializing) {
       setError("Form is still initializing");
       return;
@@ -134,9 +134,9 @@ const AddVehicleForm = ({
       setError("Vehicle data missing for update");
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       const submissionData = {
         license_plate: formData.licensePlate,
@@ -163,17 +163,17 @@ const AddVehicleForm = ({
           driver: formData.driver ? parseInt(formData.driver) : null,
         }),
       };
-      
+
       if (mode === 'add') {
         await dispatch(addVehicle({ type, data: submissionData })).unwrap();
       } else if (mode === 'edit') {
-        await dispatch(updateVehicle({ 
-          type, 
-          id: vehicleData.id, 
-          data: submissionData 
+        await dispatch(updateVehicle({
+          type,
+          id: vehicleData.id,
+          data: submissionData
         })).unwrap();
       }
-      
+
       onSubmitSuccess();
       handleClose();
     } catch (err) {
@@ -186,11 +186,11 @@ const AddVehicleForm = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      <div 
+      <div
         className="absolute inset-0  bg-opacity-50 transition-opacity"
         onClick={handleClose}
       />
-      
+
       <div className="absolute inset-y-0 right-0 pl-10 max-w-full flex">
         <div
           className={`
@@ -203,8 +203,8 @@ const AddVehicleForm = ({
             <div className="px-8 py-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-semibold text-gray-800">
-                  {mode === 'add' ? 
-                    `Add New ${type.charAt(0).toUpperCase() + type.slice(1)}` : 
+                  {mode === 'add' ?
+                    `Add New ${type.charAt(0).toUpperCase() + type.slice(1)}` :
                     `Edit ${type.charAt(0).toUpperCase() + type.slice(1)}`}
                 </h2>
                 <button
@@ -237,8 +237,8 @@ const AddVehicleForm = ({
                           key={vehicleType}
                           type="button"
                           onClick={() => handleTypeChange(vehicleType)}
-                          className={`py-3 px-4 rounded-md border transition-all ${type === vehicleType 
-                            ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' 
+                          className={`py-3 px-4 rounded-md border transition-all ${type === vehicleType
+                            ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
                             : 'border-gray-300 hover:border-gray-400'}`}
                         >
                           {vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1)}
@@ -343,7 +343,7 @@ const AddVehicleForm = ({
                 {type === 'bus' && (
                   <div className="space-y-6 pt-4 border-t border-gray-200">
                     <h3 className="text-lg font-medium text-gray-800">Bus Specifications</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -462,7 +462,7 @@ const AddVehicleForm = ({
                 {type === 'car' && (
                   <div className="space-y-6 pt-4 border-t border-gray-200">
                     <h3 className="text-lg font-medium text-gray-800">Car Specifications</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -527,7 +527,7 @@ const AddVehicleForm = ({
                 {type === 'bike' && (
                   <div className="space-y-6 pt-4 border-t border-gray-200">
                     <h3 className="text-lg font-medium text-gray-800">Bike Specifications</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">

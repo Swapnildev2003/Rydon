@@ -32,6 +32,46 @@ from .serializers import CarSerializer
 from .serializers import BikeSerializer
 from .serializers import BusRouteSerializer
 from django.core.exceptions import ObjectDoesNotExist
+from .models import PersonalDetails, GSTDetails, DocumentsUpload, BankDetails
+from .serializers import (
+    PersonalDetailsSerializer,
+    GSTDetailsSerializer,
+    DocumentsUploadSerializer,
+    BankDetailsSerializer,
+)
+
+
+def update_driver_vehicle_info(driver_id, vehicle_type, vehicle_id):
+    """
+    Update driver's vehicle_type and vehicle_id when a vehicle is assigned.
+    Also clears the old driver's vehicle info if vehicle is reassigned.
+    """
+    if not driver_id:
+        return
+    
+    try:
+        driver = Driver.objects.get(pk=driver_id)
+        driver.vehicle_type = vehicle_type
+        driver.vehicle_id = vehicle_id
+        driver.save(update_fields=['vehicle_type', 'vehicle_id'])
+    except Driver.DoesNotExist:
+        pass
+
+
+def clear_driver_vehicle_info(driver_id):
+    """
+    Clear driver's vehicle info when vehicle is unassigned.
+    """
+    if not driver_id:
+        return
+    
+    try:
+        driver = Driver.objects.get(pk=driver_id)
+        driver.vehicle_type = None
+        driver.vehicle_id = None
+        driver.save(update_fields=['vehicle_type', 'vehicle_id'])
+    except Driver.DoesNotExist:
+        pass
 
 
 def get_tokens_for_user(user):
@@ -46,6 +86,7 @@ def get_tokens_for_user(user):
 
 def generate_otp():
     return str(random.randint(1000, 9999))
+
 
 
 @csrf_exempt
@@ -105,9 +146,10 @@ def send_otp_sms(phone, otp):
 @api_view(['POST'])
 def send_otp(request):
     serializer = PhoneSerializer(data=request.data)
+     # Use request.data instead
     if not serializer.is_valid():
         return Response(serializer.errors, status=400)
-
+   
     phone = serializer.validated_data['phone']
     role = serializer.validated_data['role']
     otp = generate_otp()
@@ -191,7 +233,7 @@ def verify_otp(request):
             "tokens": tokens,
             "role": role
         })
-
+    
     user_otp.attempts += 1
     user_otp.save(update_fields=["attempts"])
     return Response({"error": "Invalid OTP"}, status=400)
@@ -199,13 +241,6 @@ def verify_otp(request):
 
 
 
-from .models import PersonalDetails, GSTDetails, DocumentsUpload, BankDetails
-from .serializers import (
-    PersonalDetailsSerializer,
-    GSTDetailsSerializer,
-    DocumentsUploadSerializer,
-    BankDetailsSerializer,
-)
 
 # -------------------- PERSONAL DETAILS --------------------
 
@@ -440,13 +475,7 @@ def delete_bank_details(request, pk):
         return Response({"error": "Not found"}, status=404)
 
 
-#-------------Driver-----------------
-def get_tokens_for_user(user):
-    refresh = RefreshToken.for_user(user)
-    return {
-        'refresh': str(refresh),
-        'access': str(refresh.access_token),
-    }
+
 
 
 
@@ -454,116 +483,83 @@ def get_tokens_for_user(user):
 # ----------------------------
 # CREATE a new driver (POST)
 # ----------------------------
-@csrf_exempt
+@api_view(['POST'])
 def signup_driver(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-            serializer = DriverSerializer(data=data)
-            if serializer.is_valid():
-                driver = serializer.save()
-                return JsonResponse({
-                    'message': 'Driver signed up successfully',
-                    'driver_id': driver.id
-                }, status=201)
-            return JsonResponse(serializer.errors, status=400)
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    serializer = DriverSerializer(data=request.data)
+    if serializer.is_valid():
+        driver = serializer.save()
+        return Response({
+            'message': 'Driver signed up successfully',
+            'driver_id': driver.id
+        }, status=201)
+    return Response(serializer.errors, status=400)
         
-@csrf_exempt        
+@api_view(['POST'])
 def login_driver(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-            email = data.get('email')
-            password = data.get('password')
-            driver = Driver.objects.filter(email=email, password=password).first()
-            print(driver)
-            if driver:
-                tokens = generate_tokens_for_user(driver, 'driver')
-             
-                return JsonResponse(tokens)
-            else:
-                return JsonResponse({'error': 'Invalid credentials'}, status=401)
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    email = request.data.get('email')
+    password = request.data.get('password')
+    driver = Driver.objects.filter(email=email, password=password).first()
+    if driver:
+        tokens = generate_tokens_for_user(driver, 'driver')
+        return Response(tokens)
+    else:
+        return Response({'error': 'Invalid credentials'}, status=401)
         
 
 # ----------------------------
 # READ all drivers (GET)
 # ----------------------------
-@csrf_exempt   
+@api_view(['GET'])
 def get_driver_details(request):
-    if request.method == 'GET':
-        drivers = Driver.objects.all()
-        serializer = DriverSerializer(drivers, many=True)
-        return JsonResponse({'drivers': serializer.data}, safe=False, status=200)
+    drivers = Driver.objects.all()
+    serializer = DriverSerializer(drivers, many=True)
+    return Response({'drivers': serializer.data}, status=200)
     
-@csrf_exempt   
-def get_driver_details_id(request,driver_id):
-    if request.method != 'GET':
-         return JsonResponse({'error': 'Only GET requests are allowed'}, status=405)
+@api_view(['GET'])
+def get_driver_details_id(request, driver_id):
     try:
-       drivers = Driver.objects.get(pk=driver_id)
-       print(drivers)
-       serializer = DriverSerializer(drivers)
-       
-       return JsonResponse({'driver': serializer.data}, safe=False, status=200)
+        driver = Driver.objects.get(pk=driver_id)
+        serializer = DriverSerializer(driver)
+        return Response({'driver': serializer.data}, status=200)
     except Driver.DoesNotExist:
-       return JsonResponse({'error': 'Driver not found'}, status=404)
+        return Response({'error': 'Driver not found'}, status=404)
     
     
 
 # ----------------------------
 # UPDATE a driver by ID (PUT)
 # ----------------------------
-@csrf_exempt
+@api_view(['PUT'])
 def update_driver(request, driver_id):
-    if request.method != 'PUT':
-        
-        return JsonResponse({'error': 'Only PUT requests are allowed'}, status=405)
-
     try:
-        driver = Driver.objects.get(pk=driver_id)  # Get driver by ID
+        driver = Driver.objects.get(pk=driver_id)
     except Driver.DoesNotExist:
-        return JsonResponse({'error': 'Driver not found'}, status=404)
+        return Response({'error': 'Driver not found'}, status=404)
 
-    try:
-        data = json.loads(request.body.decode('utf-8'))  # Parse incoming JSON
-        serializer = DriverSerializer(driver, data=data)  # Full update
-        
-        if serializer.is_valid():
-            updated_driver = serializer.save()
-            return JsonResponse({
-                'message': 'Driver updated successfully',
-                'driver_id': updated_driver.id,
-                'name': updated_driver.name,
-                'license_number': updated_driver.license_number
-            }, status=200)
-        else:
-            return JsonResponse(serializer.errors, status=400)
-
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    serializer = DriverSerializer(driver, data=request.data)
+    if serializer.is_valid():
+        updated_driver = serializer.save()
+        return Response({
+            'message': 'Driver updated successfully',
+            'driver_id': updated_driver.id,
+            'name': updated_driver.name,
+            'license_number': updated_driver.license_number
+        }, status=200)
+    return Response(serializer.errors, status=400)
 
 # ----------------------------
 # DELETE a driver by ID (DELETE)
 # ----------------------------
-@csrf_exempt
+@api_view(['DELETE'])
 def delete_driver(request, driver_id):
-    if request.method != 'DELETE':
-        return JsonResponse({'error': 'Only DELETE requests are allowed'}, status=405)
-
     try:
         driver = Driver.objects.get(pk=driver_id)
         driver.delete()
-        return JsonResponse({'message': 'Driver deleted successfully'}, status=200)
-
+        return Response({'message': 'Driver deleted successfully'}, status=200)
     except Driver.DoesNotExist:
-        return JsonResponse({'error': 'Driver not found'}, status=404)
-
+        return Response({'error': 'Driver not found'}, status=404)
     except Exception as e:
-        return JsonResponse({'error': 'Failed to delete driver', 'details': str(e)}, status=500)
+        return Response({'error': 'Failed to delete driver', 'details': str(e)}, status=500)
 
 
 
@@ -574,763 +570,671 @@ def delete_driver(request, driver_id):
 # ----------------------------
 # CREATE a new conductor (POST)
 # ----------------------------
-@csrf_exempt
+@api_view(['POST'])
 def signup_conductor(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-            serializer = ConductorSerializer(data=data)
-            if serializer.is_valid():
-                conductor = serializer.save()
-                return JsonResponse({
-                    'message': 'Conductor signed up successfully',
-                    'conductor_id': conductor.id
-                }, status=201)
-            return JsonResponse(serializer.errors, status=400)
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
-@csrf_exempt
+    serializer = ConductorSerializer(data=request.data)
+    if serializer.is_valid():
+        conductor = serializer.save()
+        return Response({
+            'message': 'Conductor signed up successfully',
+            'conductor_id': conductor.id
+        }, status=201)
+    return Response(serializer.errors, status=400)
+
+@api_view(['POST'])
 def login_conductor(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-            email = data.get('email')
-            password = data.get('password')
-            conductor = Conductor.objects.filter(email=email, password=password).first()
-            if conductor:
-                tokens = generate_tokens_for_user(conductor, 'conductor')
-                return JsonResponse(tokens)
-            else:
-                return JsonResponse({'error': 'Invalid credentials'}, status=401)
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    email = request.data.get('email')
+    password = request.data.get('password')
+    conductor = Conductor.objects.filter(email=email, password=password).first()
+    if conductor:
+        tokens = generate_tokens_for_user(conductor, 'conductor')
+        return Response(tokens)
+    else:
+        return Response({'error': 'Invalid credentials'}, status=401)
+
 # ----------------------------
 # READ all conductors (GET)
 # ----------------------------
+@api_view(['GET'])
 def get_conductor_details(request):
-    if request.method == 'GET':
-        conductors = Conductor.objects.all()
-        serializer = ConductorSerializer(conductors, many=True)
-        return JsonResponse({'conductors': serializer.data}, safe=False, status=200)
+    conductors = Conductor.objects.all()
+    serializer = ConductorSerializer(conductors, many=True)
+    return Response({'conductors': serializer.data}, status=200)
 
 
-@csrf_exempt   
-def get_conductor_details_id(request,conductor_id):
-    if request.method != 'GET':
-         return JsonResponse({'error': 'Only GET requests are allowed'}, status=405)
+@api_view(['GET'])
+def get_conductor_details_id(request, conductor_id):
     try:
-       conductor = Conductor.objects.get(pk=conductor_id)
-       print(conductor)
-       serializer = ConductorSerializer(conductor)
-       
-       return JsonResponse({'conductor': serializer.data}, safe=False, status=200)
-    except Driver.DoesNotExist:
-       return JsonResponse({'error': 'Conductor not found'}, status=404)
+        conductor = Conductor.objects.get(pk=conductor_id)
+        serializer = ConductorSerializer(conductor)
+        return Response({'conductor': serializer.data}, status=200)
+    except Conductor.DoesNotExist:
+        return Response({'error': 'Conductor not found'}, status=404)
 # ----------------------------
 # UPDATE a conductor by ID (PUT)
 # ----------------------------
-@csrf_exempt
+@api_view(['PUT'])
 def update_conductor(request, conductor_id):
-    if request.method != 'PUT':
-        return JsonResponse({'error': 'Only PUT requests are allowed'}, status=405)
-
     try:
         conductor = Conductor.objects.get(pk=conductor_id)
     except Conductor.DoesNotExist:
-        return JsonResponse({'error': 'Conductor not found'}, status=404)
+        return Response({'error': 'Conductor not found'}, status=404)
 
-    try:
-        data = json.loads(request.body.decode('utf-8'))
-        serializer = ConductorSerializer(conductor, data=data)
-
-        if serializer.is_valid():
-            updated = serializer.save()
-            return JsonResponse({
-                'message': 'Conductor updated successfully',
-                'conductor_id': updated.id,
-                'name': updated.name,
-                'contact_number': updated.contact_number
-            }, status=200)
-        else:
-            return JsonResponse(serializer.errors, status=400)
-
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    serializer = ConductorSerializer(conductor, data=request.data)
+    if serializer.is_valid():
+        updated = serializer.save()
+        return Response({
+            'message': 'Conductor updated successfully',
+            'conductor_id': updated.id,
+            'name': updated.name,
+            'contact_number': updated.contact_number
+        }, status=200)
+    return Response(serializer.errors, status=400)
 
 
 # ----------------------------
 # DELETE a conductor by ID (DELETE)
 # ----------------------------
-@csrf_exempt
+@api_view(['DELETE'])
 def delete_conductor(request, conductor_id):
-    if request.method != 'DELETE':
-        return JsonResponse({'error': 'Only DELETE requests are allowed'}, status=405)
-
     try:
         conductor = Conductor.objects.get(pk=conductor_id)
         conductor.delete()
-        return JsonResponse({'message': 'Conductor deleted successfully'}, status=200)
-
+        return Response({'message': 'Conductor deleted successfully'}, status=200)
     except Conductor.DoesNotExist:
-        return JsonResponse({'error': 'Conductor not found'}, status=404)
-
+        return Response({'error': 'Conductor not found'}, status=404)
     except Exception as e:
-        return JsonResponse({'error': 'Failed to delete conductor', 'details': str(e)}, status=500)
+        return Response({'error': 'Failed to delete conductor', 'details': str(e)}, status=500)
 
 
 
 # ----------------------------
 # CREATE a new bus (POST)
 # ----------------------------
-@csrf_exempt
+@api_view(['POST'])
 def create_bus(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-            # print(data)
-            serializer = BusSerializer(data=data)
-            
-            if serializer.is_valid():
-                bus = serializer.save()
-                return JsonResponse({
-                    'message': 'Bus created successfully',
-                    'bus_id': bus.id,
-                    'license_plate': bus.license_plate
-                }, status=201)
-            else:
-                print("Serializer errors:", serializer.errors)
-                return JsonResponse(serializer.errors, status=400)
-        except json.JSONDecodeError:
-           
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    serializer = BusSerializer(data=request.data)
+    if serializer.is_valid():
+        bus = serializer.save()
+        # Update driver's vehicle info if driver is assigned
+        if bus.driver_id:
+            update_driver_vehicle_info(bus.driver_id, 'bus', bus.id)
+        return Response({
+            'message': 'Bus created successfully',
+            'bus_id': bus.id,
+            'license_plate': bus.license_plate
+        }, status=201)
+    return Response(serializer.errors, status=400)
 
 # ----------------------------
 # READ all buses (GET)
 # ----------------------------
+@api_view(['GET'])
 def get_bus_details(request):
-    if request.method == 'GET':
-        buses = Bus.objects.all()
-        serializer = BusSerializer(buses, many=True)
-        return JsonResponse(serializer.data, safe=False, status=200)
+    buses = Bus.objects.all()
+    serializer = BusSerializer(buses, many=True)
+    return Response(serializer.data, status=200)
 
 # ----------------------------
 # UPDATE a bus by ID (PUT)
 # ----------------------------
-@csrf_exempt
+@api_view(['PUT'])
 def update_bus(request, bus_id):
-    if request.method != 'PUT':
-        return JsonResponse({'error': 'Only PUT requests are allowed'}, status=405)
-
     try:
         bus = Bus.objects.get(pk=bus_id)
     except Bus.DoesNotExist:
-        return JsonResponse({'error': 'Bus not found'}, status=404)
+        return Response({'error': 'Bus not found'}, status=404)
 
-    try:
-        data = json.loads(request.body.decode('utf-8'))
-        serializer = BusSerializer(bus, data=data)
-
-        if serializer.is_valid():
-            updated_bus = serializer.save()
-            return JsonResponse({
-                'message': 'Bus updated successfully',
-                'bus_id': updated_bus.id
-            }, status=200)
-        else:
-            return JsonResponse(serializer.errors, status=400)
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    old_driver_id = bus.driver_id  # Save old driver before update
+    serializer = BusSerializer(bus, data=request.data)
+    if serializer.is_valid():
+        updated_bus = serializer.save()
+        # Handle driver change
+        new_driver_id = updated_bus.driver_id
+        if old_driver_id != new_driver_id:
+            if old_driver_id:
+                clear_driver_vehicle_info(old_driver_id)
+            if new_driver_id:
+                update_driver_vehicle_info(new_driver_id, 'bus', updated_bus.id)
+        return Response({
+            'message': 'Bus updated successfully',
+            'bus_id': updated_bus.id
+        }, status=200)
+    return Response(serializer.errors, status=400)
 
 # ----------------------------
 # DELETE a bus by ID (DELETE)
 # ----------------------------
-@csrf_exempt
+@api_view(['DELETE'])
 def delete_bus(request, bus_id):
-    if request.method != 'DELETE':
-        return JsonResponse({'error': 'Only DELETE requests are allowed'}, status=405)
-
     try:
         bus = Bus.objects.get(pk=bus_id)
         bus.delete()
-        return JsonResponse({'message': 'Bus deleted successfully'}, status=200)
+        return Response({'message': 'Bus deleted successfully'}, status=200)
     except Bus.DoesNotExist:
-        return JsonResponse({'error': 'Bus not found'}, status=404)
+        return Response({'error': 'Bus not found'}, status=404)
     except Exception as e:
-        return JsonResponse({'error': 'Failed to delete bus', 'details': str(e)}, status=500)
-@csrf_exempt    
+        return Response({'error': 'Failed to delete bus', 'details': str(e)}, status=500)
+
+@api_view(['GET'])
 def get_bus_by_driver_id(request, driver_id):
-    if request.method == 'GET':
-        try:
-            bus = Bus.objects.get(driver__id=driver_id)
-            serializer = BusSerializer(bus)
-            return JsonResponse(serializer.data, safe=False, status=200)
-        except ObjectDoesNotExist:
-            return JsonResponse({'error': 'Bus not found for the given driver ID.'}, status=404)
-        except Exception as e:
-            return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
-    else:
-        return JsonResponse({'error': 'Only GET method is allowed.'}, status=405)
+    try:
+        bus = Bus.objects.get(driver__id=driver_id)
+        serializer = BusSerializer(bus)
+        return Response(serializer.data, status=200)
+    except ObjectDoesNotExist:
+        return Response({'error': 'Bus not found for the given driver ID.'}, status=404)
+    except Exception as e:
+        return Response({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
 
-@csrf_exempt
+@api_view(['GET'])
 def get_bus_routes(request):
-    if request.method == 'GET':
-        routes = list(BusRoute.objects.values())
-        return JsonResponse(routes, safe=False)
-    return HttpResponseNotAllowed(['GET'])
+    routes = list(BusRoute.objects.values())
+    return Response(routes)
 
-@csrf_exempt
+@api_view(['GET'])
 def get_bus_route(request, pk):
-    if request.method == 'GET':
-        try:
-            route = BusRoute.objects.get(id=pk)
-            return JsonResponse({
-                'id': route.id,
-                'name': route.name,
-                'from_location': route.from_location,
-                'to_location': route.to_location,
-                'start_date': str(route.start_date),
-                'end_date': str(route.end_date),
-                'polyline': route.polyline,
-                'distance': route.distance,
-                'duration': route.duration,
-                'vehicle_id': route.vehicle_id
-            })
-        except BusRoute.DoesNotExist:
-            return JsonResponse({'error': 'Bus route not found'}, status=404)
-    return HttpResponseNotAllowed(['GET'])
+    try:
+        route = BusRoute.objects.get(id=pk)
+        return Response({
+            'id': route.id,
+            'name': route.name,
+            'from_location': route.from_location,
+            'to_location': route.to_location,
+            'start_date': str(route.start_date),
+            'end_date': str(route.end_date),
+            'polyline': route.polyline,
+            'distance': route.distance,
+            'duration': route.duration,
+            'vehicle_id': route.vehicle_id
+        })
+    except BusRoute.DoesNotExist:
+        return Response({'error': 'Bus route not found'}, status=404)
 
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-import json
 
-@csrf_exempt
+@api_view(['POST'])
 def create_bus_route(request):
-    if request.method == 'POST':
+    serializer = BusRouteSerializer(data=request.data)
+    if serializer.is_valid():
         try:
-            data = json.loads(request.body)
-            serializer = BusRouteSerializer(data=data)
-            
-            if serializer.is_valid():
-                try:
-                    vehicle = Bus.objects.get(id=data['vehicle'])
-                except Bus.DoesNotExist:
-                    return JsonResponse({'error': 'Bus with given ID not found'}, status=404)
-                
-                # Create the route with validated data
-                route = BusRoute.objects.create(
-                    name=serializer.validated_data['name'],
-                    from_location=serializer.validated_data['from_location'],
-                    to_location=serializer.validated_data['to_location'],
-                    start_date=serializer.validated_data.get('start_date'),
-                    end_date=serializer.validated_data.get('end_date'),
-                    polyline=serializer.validated_data.get('polyline', ''),
-                    distance=serializer.validated_data.get('distance', ''),
-                    duration=serializer.validated_data.get('duration', ''),
-                    vehicle=vehicle
-                )
-                
-                serialized = BusRouteSerializer(route)
-                return JsonResponse(serialized.data, safe=False)
-            else:
-                return JsonResponse({'errors': serializer.errors}, status=400)
-                
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON data'}, status=400)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            vehicle = Bus.objects.get(id=request.data['vehicle'])
+        except Bus.DoesNotExist:
+            return Response({'error': 'Bus with given ID not found'}, status=404)
+        route = BusRoute.objects.create(
+            name=serializer.validated_data['name'],
+            from_location=serializer.validated_data['from_location'],
+            to_location=serializer.validated_data['to_location'],
+            start_date=serializer.validated_data.get('start_date'),
+            end_date=serializer.validated_data.get('end_date'),
+            polyline=serializer.validated_data.get('polyline', ''),
+            distance=serializer.validated_data.get('distance', ''),
+            duration=serializer.validated_data.get('duration', ''),
+            vehicle=vehicle
+        )
+        serialized = BusRouteSerializer(route)
+        return Response(serialized.data, status=201)
+    return Response({'errors': serializer.errors}, status=400)
 
-@csrf_exempt
+@api_view(['PUT'])
 def update_bus_route(request, pk):
-    if request.method == 'PUT':
+    try:
+        route = BusRoute.objects.get(id=pk)
+    except BusRoute.DoesNotExist:
+        return Response({'error': 'Bus route not found'}, status=404)
+    
+    data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+    if 'vehicle' in data:
         try:
-            data = json.loads(request.body)
-            route = BusRoute.objects.get(id=pk)
+            vehicle_id = data.pop('vehicle')
+            bus_instance = Bus.objects.get(id=vehicle_id)
+            route.vehicle = bus_instance
+        except Bus.DoesNotExist:
+            return Response({'error': 'Bus with given ID does not exist'}, status=400)
+    for key, value in data.items():
+        setattr(route, key, value)
+    route.save()
+    return Response({'message': 'Updated successfully'})
 
-            # Handle vehicle ForeignKey separately
-            if 'vehicle' in data:
-                try:
-                    vehicle_id = data.pop('vehicle')  # Remove it from dict
-                    bus_instance = Bus.objects.get(id=vehicle_id)
-                    route.vehicle = bus_instance
-                except Bus.DoesNotExist:
-                    return JsonResponse({'error': 'Bus with given ID does not exist'}, status=400)
-
-            # Update other fields
-            for key, value in data.items():
-                setattr(route, key, value)
-
-            route.save()
-            return JsonResponse({'message': 'Updated successfully'})
-
-        except BusRoute.DoesNotExist:
-            return JsonResponse({'error': 'Bus route not found'}, status=404)
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
-
-    return HttpResponseNotAllowed(['PUT'])
-
-
-@csrf_exempt
+@api_view(['DELETE'])
 def delete_bus_route(request, pk):
-    if request.method == 'DELETE':
-        try:
-            route = BusRoute.objects.get(id=pk)
-            route.delete()
-            return JsonResponse({'message': 'Deleted successfully'})
-        except BusRoute.DoesNotExist:
-            return JsonResponse({'error': 'Bus route not found'}, status=404)
-    return HttpResponseNotAllowed(['DELETE'])
+    try:
+        route = BusRoute.objects.get(id=pk)
+        route.delete()
+        return Response({'message': 'Deleted successfully'})
+    except BusRoute.DoesNotExist:
+        return Response({'error': 'Bus route not found'}, status=404)
 
-@csrf_exempt
+@api_view(['POST'])
 def create_bus_checkpoint(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            route_id = data.get('route')
-            route = BusRoute.objects.get(id=route_id)
-           
+    try:
+        route_id = request.data.get('route')
+        route = BusRoute.objects.get(id=route_id)
+        checkpoint = BusCheckpoint.objects.create(
+            address=request.data.get('address'),
+            lat=request.data.get('lat'),
+            lng=request.data.get('lng'),
+            route=route
+        )
+        return Response({'message': 'Checkpoint created', 'id': checkpoint.id}, status=201)
+    except BusRoute.DoesNotExist:
+        return Response({'error': 'Route not found'}, status=400)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
 
-            checkpoint = BusCheckpoint.objects.create(
-                address=data.get('address'),
-                lat=data.get('lat'),
-                lng=data.get('lng'),
-                route=route
-            )
-
-            return JsonResponse({'message': 'Checkpoint created', 'id': checkpoint.id})
-
-        except BusRoute.DoesNotExist:
-            return JsonResponse({'error': 'Route not found'}, status=400)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-
-    return HttpResponseNotAllowed(['POST'])
-@csrf_exempt
+@api_view(['GET'])
 def list_bus_checkpoints(request):
-    if request.method == 'GET':
-        checkpoints = BusCheckpoint.objects.all()
-        data = [
-            {
-                'id': cp.id,
-                'address': cp.address,
-                'lat': cp.lat,
-                'lng': cp.lng,
-                'route': cp.route.id
-            } for cp in checkpoints
-        ]
-        return JsonResponse(data, safe=False)
-    return HttpResponseNotAllowed(['GET'])
-@csrf_exempt
+    checkpoints = BusCheckpoint.objects.all()
+    data = [
+        {
+            'id': cp.id,
+            'address': cp.address,
+            'lat': cp.lat,
+            'lng': cp.lng,
+            'route': cp.route.id
+        } for cp in checkpoints
+    ]
+    return Response(data)
+
+@api_view(['GET'])
 def get_bus_checkpoint(request, pk):
-    if request.method == 'GET':
-        try:
-            cp = BusCheckpoint.objects.get(id=pk)
-            data = {
-                'id': cp.id,
-                'address': cp.address,
-                'lat': cp.lat,
-                'lng': cp.lng,
-                'route': cp.route.id
-            }
-            return JsonResponse(data)
-        except BusCheckpoint.DoesNotExist:
-            return JsonResponse({'error': 'Checkpoint not found'}, status=404)
+    try:
+        cp = BusCheckpoint.objects.get(id=pk)
+        data = {
+            'id': cp.id,
+            'address': cp.address,
+            'lat': cp.lat,
+            'lng': cp.lng,
+            'route': cp.route.id
+        }
+        return Response(data)
+    except BusCheckpoint.DoesNotExist:
+        return Response({'error': 'Checkpoint not found'}, status=404)
 
-    return HttpResponseNotAllowed(['GET'])
-
-
-@csrf_exempt
+@api_view(['PUT'])
 def update_bus_checkpoint(request, pk):
-    if request.method == 'PUT':
-        try:
-            data = json.loads(request.body)
-            cp = BusCheckpoint.objects.get(id=pk)
+    try:
+        cp = BusCheckpoint.objects.get(id=pk)
+        if 'route' in request.data:
+            route = BusRoute.objects.get(id=request.data['route'])
+            cp.route = route
+        cp.address = request.data.get('address', cp.address)
+        cp.lat = request.data.get('lat', cp.lat)
+        cp.lng = request.data.get('lng', cp.lng)
+        cp.save()
+        return Response({'message': 'Checkpoint updated'})
+    except BusCheckpoint.DoesNotExist:
+        return Response({'error': 'Checkpoint not found'}, status=404)
+    except BusRoute.DoesNotExist:
+        return Response({'error': 'Route not found'}, status=400)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
 
-            if 'route' in data:
-                route = BusRoute.objects.get(id=data['route'])
-                cp.route = route
-
-            cp.address = data.get('address', cp.address)
-            cp.lat = data.get('lat', cp.lat)
-            cp.lng = data.get('lng', cp.lng)
-
-            cp.save()
-            return JsonResponse({'message': 'Checkpoint updated'})
-        except BusCheckpoint.DoesNotExist:
-            return JsonResponse({'error': 'Checkpoint not found'}, status=404)
-        except BusRoute.DoesNotExist:
-            return JsonResponse({'error': 'Route not found'}, status=400)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-
-    return HttpResponseNotAllowed(['PUT'])
-
-@csrf_exempt
+@api_view(['DELETE'])
 def delete_bus_checkpoint(request, pk):
-    if request.method == 'DELETE':
-        try:
-            cp = BusCheckpoint.objects.get(id=pk)
-            cp.delete()
-            return JsonResponse({'message': 'Checkpoint deleted'})
-        except BusCheckpoint.DoesNotExist:
-            return JsonResponse({'error': 'Checkpoint not found'}, status=404)
-
-    return HttpResponseNotAllowed(['DELETE'])
+    try:
+        cp = BusCheckpoint.objects.get(id=pk)
+        cp.delete()
+        return Response({'message': 'Checkpoint deleted'})
+    except BusCheckpoint.DoesNotExist:
+        return Response({'error': 'Checkpoint not found'}, status=404)
 
 
-@csrf_exempt
+@api_view(['POST'])
 def create_car(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-            serializer = CarSerializer(data=data)
+    serializer = CarSerializer(data=request.data)
+    if serializer.is_valid():
+        car = serializer.save()
+        if car.driver_id:
+            update_driver_vehicle_info(car.driver_id, 'car', car.id)
+        return Response({
+            'message': 'Car created successfully',
+            'car_id': car.id
+        }, status=201)
+    return Response(serializer.errors, status=400)
 
-            if serializer.is_valid():
-                car = serializer.save()
-                return JsonResponse({
-                    'message': 'Car created successfully',
-                    'car_id': car.id
-                }, status=201)
-            else:
-                return JsonResponse(serializer.errors, status=400)
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
-
+@api_view(['GET'])
 def get_car_details(request):
-    if request.method == 'GET':
-        cars = Car.objects.all()
-        serializer = CarSerializer(cars, many=True)
-        return JsonResponse(serializer.data, safe=False, status=200)
+    cars = Car.objects.all()
+    serializer = CarSerializer(cars, many=True)
+    return Response(serializer.data, status=200)
 
-@csrf_exempt
+@api_view(['PUT'])
 def update_car(request, car_id):
-    if request.method != 'PUT':
-        return JsonResponse({'error': 'Only PUT requests are allowed'}, status=405)
-
     try:
         car = Car.objects.get(pk=car_id)
     except Car.DoesNotExist:
-        return JsonResponse({'error': 'Car not found'}, status=404)
+        return Response({'error': 'Car not found'}, status=404)
 
-    try:
-        data = json.loads(request.body.decode('utf-8'))
-        serializer = CarSerializer(car, data=data)
+    old_driver_id = car.driver_id
+    serializer = CarSerializer(car, data=request.data)
+    if serializer.is_valid():
+        updated_car = serializer.save()
+        new_driver_id = updated_car.driver_id
+        if old_driver_id != new_driver_id:
+            if old_driver_id:
+                clear_driver_vehicle_info(old_driver_id)
+            if new_driver_id:
+                update_driver_vehicle_info(new_driver_id, 'car', updated_car.id)
+        return Response({'message': 'Car updated successfully'}, status=200)
+    return Response(serializer.errors, status=400)
 
-        if serializer.is_valid():
-            updated_car = serializer.save()
-            return JsonResponse({'message': 'Car updated successfully'}, status=200)
-        else:
-            return JsonResponse(serializer.errors, status=400)
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
-
-@csrf_exempt
+@api_view(['DELETE'])
 def delete_car(request, car_id):
-    if request.method != 'DELETE':
-        return JsonResponse({'error': 'Only DELETE requests are allowed'}, status=405)
-
     try:
         car = Car.objects.get(pk=car_id)
         car.delete()
-        return JsonResponse({'message': 'Car deleted successfully'}, status=200)
+        return Response({'message': 'Car deleted successfully'}, status=200)
     except Car.DoesNotExist:
-        return JsonResponse({'error': 'Car not found'}, status=404)
+        return Response({'error': 'Car not found'}, status=404)
     except Exception as e:
-        return JsonResponse({'error': 'Failed to delete car', 'details': str(e)}, status=500)
+        return Response({'error': 'Failed to delete car', 'details': str(e)}, status=500)
 
-@csrf_exempt
+@api_view(['GET'])
 def get_car_by_driver_id(request, driver_id):
-    if request.method == 'GET':
-        try:
-            car = Car.objects.get(driver__id=driver_id)
-            serializer = CarSerializer(car)
-            return JsonResponse(serializer.data, safe=False, status=200)
-        except ObjectDoesNotExist:
-            return JsonResponse({'error': 'Car not found for the given driver ID.'}, status=404)
-        except Exception as e:
-            return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
-    else:
-        return JsonResponse({'error': 'Only GET method is allowed.'}, status=405)
+    try:
+        car = Car.objects.get(driver__id=driver_id)
+        serializer = CarSerializer(car)
+        return Response(serializer.data, status=200)
+    except ObjectDoesNotExist:
+        return Response({'error': 'Car not found for the given driver ID.'}, status=404)
+    except Exception as e:
+        return Response({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
     
 # ------------------ CAR ROUTE ------------------ #
 
-@csrf_exempt
+@api_view(['POST'])
 def create_car_route(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        try:
-            car = Car.objects.get(id=data['vehicle'])
-            car_route = CarRoute.objects.create(
-                name=data.get('name'),
-                from_location=data.get('from_location'),
-                to_location=data.get('to_location'),
-                start_date=data.get('start_date'),
-                end_date=data.get('end_date'),
-                polyline=data.get('polyline'),
-                distance=data.get('distance'),
-                duration=data.get('duration'),
-                vehicle=car
-            )
-            return JsonResponse({'message': 'Car route created', 'id': car_route.id})
-        except Car.DoesNotExist:
-            return JsonResponse({'error': 'Car not found'}, status=400)
-    return HttpResponseNotAllowed(['POST'])
+    try:
+        car = Car.objects.get(id=request.data['vehicle'])
+        car_route = CarRoute.objects.create(
+            name=request.data.get('name'),
+            from_location=request.data.get('from_location'),
+            to_location=request.data.get('to_location'),
+            start_date=request.data.get('start_date'),
+            end_date=request.data.get('end_date'),
+            polyline=request.data.get('polyline'),
+            distance=request.data.get('distance'),
+            duration=request.data.get('duration'),
+            vehicle=car
+        )
+        return Response({'message': 'Car route created', 'id': car_route.id}, status=201)
+    except Car.DoesNotExist:
+        return Response({'error': 'Car not found'}, status=400)
 
-@csrf_exempt
+@api_view(['GET'])
 def list_car_routes(request):
-    if request.method == 'GET':
-        routes = CarRoute.objects.all()
-        data = [{'id': r.id, 'name': r.name, 'vehicle_id': r.vehicle.id} for r in routes]
-        return JsonResponse(data, safe=False)
-    return HttpResponseNotAllowed(['GET'])
+    routes = CarRoute.objects.all()
+    data = [{'id': r.id, 'name': r.name, 'vehicle_id': r.vehicle.id} for r in routes]
+    return Response(data)
 
-@csrf_exempt
+@api_view(['GET'])
 def get_car_route(request, pk):
-    if request.method == 'GET':
-        try:
-            route = CarRoute.objects.get(id=pk)
-            data = {
-                'id': route.id,
-                'name': route.name,
-                'vehicle_id': route.vehicle.id
-            }
-            return JsonResponse(data)
-        except CarRoute.DoesNotExist:
-            return JsonResponse({'error': 'Car route not found'}, status=404)
-    return HttpResponseNotAllowed(['GET'])
+    try:
+        route = CarRoute.objects.get(id=pk)
+        data = {
+            'id': route.id,
+            'name': route.name,
+            'vehicle_id': route.vehicle.id
+        }
+        return Response(data)
+    except CarRoute.DoesNotExist:
+        return Response({'error': 'Car route not found'}, status=404)
 
-@csrf_exempt
+@api_view(['PUT'])
 def update_car_route(request, pk):
-    if request.method == 'PUT':
-        try:
-            data = json.loads(request.body)
-            route = CarRoute.objects.get(id=pk)
-            for key, value in data.items():
-                if key == "vehicle":
-                    value = Car.objects.get(id=value)
-                setattr(route, key, value)
-            route.save()
-            return JsonResponse({'message': 'Car route updated'})
-        except CarRoute.DoesNotExist:
-            return JsonResponse({'error': 'Car route not found'}, status=404)
-    return HttpResponseNotAllowed(['PUT'])
+    try:
+        route = CarRoute.objects.get(id=pk)
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        for key, value in data.items():
+            if key == "vehicle":
+                value = Car.objects.get(id=value)
+            setattr(route, key, value)
+        route.save()
+        return Response({'message': 'Car route updated'})
+    except CarRoute.DoesNotExist:
+        return Response({'error': 'Car route not found'}, status=404)
 
-@csrf_exempt
+@api_view(['DELETE'])
 def delete_car_route(request, pk):
-    if request.method == 'DELETE':
-        try:
-            route = CarRoute.objects.get(id=pk)
-            route.delete()
-            return JsonResponse({'message': 'Car route deleted'})
-        except CarRoute.DoesNotExist:
-            return JsonResponse({'error': 'Car route not found'}, status=404)
-    return HttpResponseNotAllowed(['DELETE'])
-@csrf_exempt
+    try:
+        route = CarRoute.objects.get(id=pk)
+        route.delete()
+        return Response({'message': 'Car route deleted'})
+    except CarRoute.DoesNotExist:
+        return Response({'error': 'Car route not found'}, status=404)
+@api_view(['POST'])
 def create_bike(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-            serializer = BikeSerializer(data=data)
+    serializer = BikeSerializer(data=request.data)
+    if serializer.is_valid():
+        bike = serializer.save()
+        if bike.driver_id:
+            update_driver_vehicle_info(bike.driver_id, 'bike', bike.id)
+        return Response({
+            'message': 'Bike created successfully',
+            'bike_id': bike.id
+        }, status=201)
+    return Response(serializer.errors, status=400)
 
-            if serializer.is_valid():
-                bike = serializer.save()
-                return JsonResponse({
-                    'message': 'Bike created successfully',
-                    'bike_id': bike.id
-                }, status=201)
-            else:
-                return JsonResponse(serializer.errors, status=400)
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
-
+@api_view(['GET'])
 def get_bike_details(request):
-    if request.method == 'GET':
-        bikes = Bike.objects.all()
-        serializer = BikeSerializer(bikes, many=True)
-        return JsonResponse(serializer.data, safe=False, status=200)
+    bikes = Bike.objects.all()
+    serializer = BikeSerializer(bikes, many=True)
+    return Response(serializer.data, status=200)
 
-@csrf_exempt
+@api_view(['PUT'])
 def update_bike(request, bike_id):
-    if request.method != 'PUT':
-        return JsonResponse({'error': 'Only PUT requests are allowed'}, status=405)
-
     try:
         bike = Bike.objects.get(pk=bike_id)
     except Bike.DoesNotExist:
-        return JsonResponse({'error': 'Bike not found'}, status=404)
+        return Response({'error': 'Bike not found'}, status=404)
 
-    try:
-        data = json.loads(request.body.decode('utf-8'))
-        serializer = BikeSerializer(bike, data=data)
+    old_driver_id = bike.driver_id
+    serializer = BikeSerializer(bike, data=request.data)
+    if serializer.is_valid():
+        updated_bike = serializer.save()
+        new_driver_id = updated_bike.driver_id
+        if old_driver_id != new_driver_id:
+            if old_driver_id:
+                clear_driver_vehicle_info(old_driver_id)
+            if new_driver_id:
+                update_driver_vehicle_info(new_driver_id, 'bike', updated_bike.id)
+        return Response({'message': 'Bike updated successfully'}, status=200)
+    return Response(serializer.errors, status=400)
 
-        if serializer.is_valid():
-            updated_bike = serializer.save()
-            return JsonResponse({'message': 'Bike updated successfully'}, status=200)
-        else:
-            return JsonResponse(serializer.errors, status=400)
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
-
-@csrf_exempt
+@api_view(['DELETE'])
 def delete_bike(request, bike_id):
-    if request.method != 'DELETE':
-        return JsonResponse({'error': 'Only DELETE requests are allowed'}, status=405)
-
     try:
         bike = Bike.objects.get(pk=bike_id)
         bike.delete()
-        return JsonResponse({'message': 'Bike deleted successfully'}, status=200)
+        return Response({'message': 'Bike deleted successfully'}, status=200)
     except Bike.DoesNotExist:
-        return JsonResponse({'error': 'Bike not found'}, status=404)
+        return Response({'error': 'Bike not found'}, status=404)
     except Exception as e:
-        return JsonResponse({'error': 'Failed to delete bike', 'details': str(e)}, status=500)
-@csrf_exempt
+        return Response({'error': 'Failed to delete bike', 'details': str(e)}, status=500)
+
+@api_view(['GET'])
 def get_bike_by_driver_id(request, driver_id):
-    if request.method == 'GET':
-        try:
-            bike = Bike.objects.get(driver__id=driver_id)
-            serializer = BikeSerializer(bike)
-            return JsonResponse(serializer.data, safe=False, status=200)
-        except ObjectDoesNotExist:
-            return JsonResponse({'error': 'Bike not found for the given driver ID.'}, status=404)
-        except Exception as e:
-            return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
-    else:
-        return JsonResponse({'error': 'Only GET method is allowed.'}, status=405)
-    
-@csrf_exempt
+    try:
+        bike = Bike.objects.get(driver__id=driver_id)
+        serializer = BikeSerializer(bike)
+        return Response(serializer.data, status=200)
+    except ObjectDoesNotExist:
+        return Response({'error': 'Bike not found for the given driver ID.'}, status=404)
+    except Exception as e:
+        return Response({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
+
+@api_view(['POST'])
 def create_bike_route(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        try:
-            bike = Bike.objects.get(id=data['vehicle'])
-            bike_route = BikeRoute.objects.create(
-                name=data.get('name'),
-                from_location=data.get('from_location'),
-                to_location=data.get('to_location'),
-                start_date=data.get('start_date'),
-                end_date=data.get('end_date'),
-                polyline=data.get('polyline'),
-                distance=data.get('distance'),
-                duration=data.get('duration'),
-                vehicle=bike
-            )
-            return JsonResponse({'message': 'Bike route created', 'id': bike_route.id})
-        except Bike.DoesNotExist:
-            return JsonResponse({'error': 'Bike not found'}, status=400)
-    return HttpResponseNotAllowed(['POST'])
+    try:
+        bike = Bike.objects.get(id=request.data['vehicle'])
+        bike_route = BikeRoute.objects.create(
+            name=request.data.get('name'),
+            from_location=request.data.get('from_location'),
+            to_location=request.data.get('to_location'),
+            start_date=request.data.get('start_date'),
+            end_date=request.data.get('end_date'),
+            polyline=request.data.get('polyline'),
+            distance=request.data.get('distance'),
+            duration=request.data.get('duration'),
+            vehicle=bike
+        )
+        return Response({'message': 'Bike route created', 'id': bike_route.id}, status=201)
+    except Bike.DoesNotExist:
+        return Response({'error': 'Bike not found'}, status=400)
 
-@csrf_exempt
+@api_view(['GET'])
 def list_bike_routes(request):
-    if request.method == 'GET':
-        routes = BikeRoute.objects.all()
-        data = [{'id': r.id, 'name': r.name, 'vehicle_id': r.vehicle.id} for r in routes]
-        return JsonResponse(data, safe=False)
-    return HttpResponseNotAllowed(['GET'])
+    routes = BikeRoute.objects.all()
+    data = [{'id': r.id, 'name': r.name, 'vehicle_id': r.vehicle.id} for r in routes]
+    return Response(data)
 
-@csrf_exempt
+@api_view(['GET'])
 def get_bike_route(request, pk):
-    if request.method == 'GET':
-        try:
-            route = BikeRoute.objects.get(id=pk)
-            data = {
-                'id': route.id,
-                'name': route.name,
-                'vehicle_id': route.vehicle.id
-            }
-            return JsonResponse(data)
-        except BikeRoute.DoesNotExist:
-            return JsonResponse({'error': 'Bike route not found'}, status=404)
-    return HttpResponseNotAllowed(['GET'])
+    try:
+        route = BikeRoute.objects.get(id=pk)
+        data = {
+            'id': route.id,
+            'name': route.name,
+            'vehicle_id': route.vehicle.id
+        }
+        return Response(data)
+    except BikeRoute.DoesNotExist:
+        return Response({'error': 'Bike route not found'}, status=404)
 
-@csrf_exempt
+@api_view(['PUT'])
 def update_bike_route(request, pk):
-    if request.method == 'PUT':
-        try:
-            data = json.loads(request.body)
-            route = BikeRoute.objects.get(id=pk)
-            for key, value in data.items():
-                if key == "vehicle":
-                    value = Bike.objects.get(id=value)
-                setattr(route, key, value)
-            route.save()
-            return JsonResponse({'message': 'Bike route updated'})
-        except BikeRoute.DoesNotExist:
-            return JsonResponse({'error': 'Bike route not found'}, status=404)
-    return HttpResponseNotAllowed(['PUT'])
+    try:
+        route = BikeRoute.objects.get(id=pk)
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        for key, value in data.items():
+            if key == "vehicle":
+                value = Bike.objects.get(id=value)
+            setattr(route, key, value)
+        route.save()
+        return Response({'message': 'Bike route updated'})
+    except BikeRoute.DoesNotExist:
+        return Response({'error': 'Bike route not found'}, status=404)
 
-@csrf_exempt
+@api_view(['DELETE'])
 def delete_bike_route(request, pk):
-    if request.method == 'DELETE':
-        try:
-            route = BikeRoute.objects.get(id=pk)
-            route.delete()
-            return JsonResponse({'message': 'Bike route deleted'})
-        except BikeRoute.DoesNotExist:
-            return JsonResponse({'error': 'Bike route not found'}, status=404)
-    return HttpResponseNotAllowed(['DELETE'])
+    try:
+        route = BikeRoute.objects.get(id=pk)
+        route.delete()
+        return Response({'message': 'Bike route deleted'})
+    except BikeRoute.DoesNotExist:
+        return Response({'error': 'Bike route not found'}, status=404)
 
 
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.parsers import JSONParser
-import json
+
 from .models import BookingRequest
 from .serializers import BookingRequestSerializer
 
 
-@csrf_exempt
-
-@csrf_exempt
+@api_view(['POST'])
 def create_booking(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
-
     try:
-        data = json.loads(request.body.decode('utf-8'))
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         
-        # Handle both 'driver' and 'driver_id' input for backward compatibility
-        if 'driver_id' in data and 'driver' not in data:
-            data['driver'] = data.pop('driver_id')
-        
-        # Convert driver object to ID if needed
-        if isinstance(data.get('driver'), dict):
-            data['driver'] = data['driver'].get('id')
+        # Handle 'driver' key → rename to 'drivers' to match model field
+        if 'driver' in data and 'drivers' not in data:
+            data['drivers'] = data.pop('driver')
 
         serializer = BookingRequestSerializer(data=data)
         
         if serializer.is_valid():
             booking = serializer.save()
-            return JsonResponse({
+            return Response({
                 'message': 'Booking created successfully',
                 'booking_id': booking.id,
-                'driver': booking.driver.id,  # Changed from driver_id to driver
+                'drivers': booking.drivers.id,
                 'status': booking.status,
                 'created_at': booking.created_at
             }, status=201)
-        return JsonResponse(serializer.errors, status=400)
+        return Response(serializer.errors, status=400)
             
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return Response({'error': str(e)}, status=500)
     
     
-@csrf_exempt
+@api_view(['GET'])
 def get_booking_requests(request):
-    if request.method == 'GET':
-        bookings = BookingRequest.objects.all().values()
-        return JsonResponse(list(bookings), safe=False)
-    else:
-        return JsonResponse({'error': 'GET method required'}, status=400)
+    bookings = BookingRequest.objects.all().values()
+    return Response(list(bookings))
     
-@csrf_exempt
+@api_view(['GET'])
 def get_bookings_by_driver(request):
-    if request.method == 'GET':
-        driver_id = request.GET.get('driver_id')
-        print(driver_id)
-        if not driver_id:
-            return JsonResponse({'error': 'driver_id is required as a query parameter'}, status=400)
+    driver_id = request.GET.get('driver_id')
+    if not driver_id:
+        return Response({'error': 'driver_id is required as a query parameter'}, status=400)
 
-        bookings = BookingRequest.objects.filter(driver_id=driver_id).values()
-        return JsonResponse(list(bookings), safe=False)
-    else:
-        return JsonResponse({'error': 'Only GET method is allowed'}, status=405)
+    bookings = BookingRequest.objects.filter(drivers_id=driver_id).values()
+    return Response(list(bookings))
+
+@api_view(['POST'])
+def update_booking_status(request, booking_id):
+    try:
+        status = request.data.get('status')
+        vehicle_type = request.data.get('vehicle_type', '').lower()
+        
+        if status not in ['accepted', 'rejected']:
+            return Response({'error': 'Invalid status. Choose accepted or rejected'}, status=400)
+        
+        booking = BookingRequest.objects.get(id=booking_id)
+        
+        # If trying to accept, check if user already has an accepted booking
+        if status == 'accepted':
+            # Check if this user already has an accepted booking with another driver
+            existing_accepted = BookingRequest.objects.filter(
+                user=booking.user,
+                status='accepted'
+            ).exclude(id=booking_id).first() #or use .exist
+            
+            if existing_accepted:
+                return Response({
+                    'error': 'This user already has an active ride with another driver.',
+                    # 'existing_booking_id': existing_accepted.id,
+                    # 'existing_driver_id': existing_accepted.driver.id
+                }, status=400)
+        
+        booking.status = status
+        booking.save()
+        
+        if status == 'accepted':
+            driver = booking.drivers
+            from .models import Bus, Car, Bike
+            
+            vehicle_model = None
+            if vehicle_type == 'bus':
+                vehicle_model = Bus
+            elif vehicle_type == 'car':
+                vehicle_model = Car
+            elif vehicle_type == 'bike':
+                vehicle_model = Bike
+            
+            if vehicle_model:
+                vehicle = vehicle_model.objects.filter(driver=driver).first()
+                if vehicle:
+                    vehicle.is_booked = True
+                    vehicle.save()
+                    return Response({'message': f'Booking accepted and {vehicle_type} marked as booked'}, status=200)
+                else:
+                    return Response({'error': f'No {vehicle_type} found for this driver'}, status=404)
+            else:
+                found = False
+                for model, name in [(Bus, 'bus'), (Car, 'car'), (Bike, 'bike')]:
+                    vehicle = model.objects.filter(driver=driver).first()
+                    if vehicle:
+                        vehicle.is_booked = True
+                        vehicle.save()
+                        found = True
+                        return Response({'message': f'Booking accepted and {name} marked as booked (auto-detected)'}, status=200)
+                
+                if not found:
+                    return Response({'message': 'Booking accepted but no vehicle found for driver'}, status=200)
+        
+        return Response({'message': 'Booking rejected'}, status=200)
+        
+    except BookingRequest.DoesNotExist:
+        return Response({'error': 'Booking not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)

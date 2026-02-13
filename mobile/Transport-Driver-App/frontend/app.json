@@ -9,10 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "config": {
-        "googleMapsApiKey": "AIzaSyC_QOHqCewQWCZakHfvDtN3Q9kOOCiqB9c"
-      }
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
@@ -20,17 +17,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyC_QOHqCewQWCZakHfvDtN3Q9kOOCiqB9c"
-        }
-      },
       "permissions": [
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
@@ -64,6 +51,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4899ab6c-e2c4-4468-99fd-d4f9d7717fa5"
+      }
     }
   }
 }

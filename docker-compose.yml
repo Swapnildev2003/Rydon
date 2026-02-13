@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend/project
+      dockerfile: Dockerfile
+    image: transport-backend
+    container_name: transport-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/project/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - transport-network
+
+  frontend:
+    build:
+      context: ./frontend/frontend
+      dockerfile: Dockerfile
+    image: frontend
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    networks:
+      - transport-network
+
+  db:
+    image: postgres:16-alpine
+    container_name: transport-db
+    environment:
+      - POSTGRES_DB=transport_management
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=1234
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d transport_management"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - transport-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: transport-redis
+    networks:
+      - transport-network
+
+volumes:
+  postgres_data:
+
+networks:
+  transport-network:
+    driver: bridge
